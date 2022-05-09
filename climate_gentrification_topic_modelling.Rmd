@@ -115,26 +115,26 @@ FindTopicsNumber_plot(result)
 ```
 
 **FindTopicsNumber: 4, 7, 12**
-k=4: 50%
-k=7: 75%
-k=12: Close to 100% 
+k=5: 75%/30%
+k=7: 55%/50%
+k=12: 90%/25% 
 
-**We ran 3 models based on the number of topics provided by the optimization metrics. We think that k=4, k=7 and k=12 are good values to test for the number of topics according the results from the CauJuan2009 and Devaud2014 metrics. In this case, we do recognize that k=18 may also seem like a good number to test but we opted for k=4 instead because of our prior knowledge that climate gentrification does not have that many subtopics.**
+**We ran 3 models based on the number of topics provided by the optimization metrics. We think that k=5, k=7 and k=12 are good values to test for the number of topics according to the results from the CauJuan2009 and Devaud2014 metrics. In this case, we do recognize that k=18 may also seem like a good number to test but we opted for k=5 instead because of our prior knowledge that climate gentrification does not have that many subtopics.**
 
-### Topic models for k=4, k=7 and k=12
+### Topic models for k=5, k=7 and k=12
 
-```{r LDA_modeling_4}
-k <- 4
+```{r LDA_modeling_5}
+k <- 5
 
-topicModel_k4 <- LDA(dfm, k, method="Gibbs", control=list(iter = 500, verbose = 25))
+topicModel_k5 <- LDA(dfm, k, method="Gibbs", control=list(iter = 500, verbose = 25))
 #nTerms(dfm_comm) 
 
-tmResult_4 <- posterior(topicModel_k4)
-attributes(tmResult_4)
+tmResult_5 <- posterior(topicModel_k5)
+attributes(tmResult_5)
 #nTerms(dfm_comm)   
-beta_4 <- tmResult_4$terms   # get beta from results
-dim(beta_4)                # K distributions over nTerms(DTM) terms# lengthOfVocab
-terms(topicModel_k4, 10)
+beta_5 <- tmResult_5$terms   # get beta from results
+dim(beta_5)                # K distributions over nTerms(DTM) terms# lengthOfVocab
+terms(topicModel_k5, 10)
 ```
 
 
@@ -169,14 +169,14 @@ vocab <- (colnames(beta_12))
 
 
 ```{r top_terms_topic}
-comment_topics_4 <- tidy(topicModel_k4, matrix = "beta")
+comment_topics_5 <- tidy(topicModel_k5, matrix = "beta")
 
 comment_topics_7 <- tidy(topicModel_k7, matrix = "beta")
 
 
 comment_topics_12 <- tidy(topicModel_k12, matrix = "beta")
 
-top_terms_4 <- comment_topics_4 %>%
+top_terms_5 <- comment_topics_5 %>%
   group_by(topic) %>%
   top_n(10, beta) %>%
   ungroup() %>%
@@ -201,13 +201,13 @@ top_terms_12 <- comment_topics_12 %>%
 
 ```{r plot_top_terms, fig.width = 12, fig.height = 18}
 
-top_terms_4_plot <- top_terms_4 %>%
+top_terms_5_plot <- top_terms_5 %>%
   mutate(term = reorder(term, beta)) %>%
   ggplot(aes(term, beta, fill = factor(topic))) +
   geom_col(show.legend = FALSE) +
   facet_wrap(~ topic, scales = "free") +
   coord_flip() +
-  labs(title="Top Terms for 4-Topic Model")
+  labs(title="Top Terms for 5-Topic Model")
 
 top_terms_7_plot <- top_terms_7 %>%
   mutate(term = reorder(term, beta)) %>%
@@ -227,15 +227,15 @@ top_terms_12_plot <- top_terms_12 %>%
   labs(title="Top Terms for 12-Topic Model")
 
 
-top_terms_4_plot / top_terms_7_plot / top_terms_12_plot
+top_terms_5_plot / top_terms_7_plot / top_terms_12_plot
 ```
 
 
 
 ```{r topic_names}
-top5termsPerTopic_4 <- terms(topicModel_k4, 5)
-topicNames_4 <- apply(top5termsPerTopic_4, 2, paste, collapse=" ")
-topicNames_4
+top5termsPerTopic_5 <- terms(topicModel_k5, 5)
+topicNames_5 <- apply(top5termsPerTopic_5, 2, paste, collapse=" ")
+topicNames_5
 
 top5termsPerTopic_7 <- terms(topicModel_k7, 5)
 topicNames_7 <- apply(top5termsPerTopic_7, 2, paste, collapse=" ")
@@ -248,13 +248,13 @@ topicNames_12
 ```
 
 
-```{r LDAvis_4, results='hide'}
+```{r LDAvis_5, results='hide', eval=FALSE}
 library(LDAvis)
 library("tsne")
 svd_tsne <- function(x) tsne(svd(x)$u)
 json <- createJSON(
-  phi = tmResult_4$terms, 
-  theta = tmResult_4$topics, 
+  phi = tmResult_5$terms, 
+  theta = tmResult_5$topics, 
   doc.length = rowSums(dfm), 
   vocab = colnames(dfm), 
   term.frequency = colSums(dfm),
@@ -264,10 +264,10 @@ json <- createJSON(
 serVis(json)
 
 ```
-![Topic Modelling Intertopic Distance Map for k=4](plots/topic_4.png)
+![Topic Modelling Intertopic Distance Map for k=5](plots/topic_5.png)
 
 
-```{r LDAvis_7, results='hide'}
+```{r LDAvis_7, results='hide', eval=FALSE}
 library(LDAvis)
 library("tsne")
 svd_tsne <- function(x) tsne(svd(x)$u)
@@ -285,7 +285,7 @@ serVis(json)
 ```
 ![Topic Modelling Intertopic Distance Map for k=7](plots/topic_7.png)
 
-```{r LDAvis_12, results='hide'}
+```{r LDAvis_12, results='hide', eval=FALSE}
 library(LDAvis)
 library("tsne")
 svd_tsne <- function(x) tsne(svd(x)$u)
@@ -305,9 +305,9 @@ serVis(json)
 The interopic distance maps show that there's not much overlap either of the three topic models.
 Given our limited dataset, there were alot of small topics in k=12 model that may not be important to the overarching themes of climate gentrification
 We found the interpretation for 12 was not useful because it parsed out topics more than necessary (i.e. flood and rise were in two different topics).
-The k=4 model has a good spread in the intertopic distance map but it only scored 50% on the optimization metrics. 
+The k=5 model has a good spread in the intertopic distance map but it only scored 75/30% on the optimization metrics. 
 The k=7 model has good spread in the intertopic distance map as well but there seems to be one very large topic in the center of it all.
-Since the k=7 model scored nearly 75% on the optimization metric, we believe that the optimal number of topics is 7 as strikes a good balance between detail of the topics and usefulness.
+Since the k=7 model scored nearly 55%/50% on the optimization metric and did not add much value through the additional 2 topics, we believe that the optimal number of topics is 5.
 However, as mentioned earlier, the newness and specificity of our search term does not make it well suited for topic modelling analysis.
 
 
