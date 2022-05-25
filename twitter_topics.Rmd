@@ -35,9 +35,15 @@ tweets <- tibble(text = raw_tweets$Title, # Why not full text?
 daily_tweets <- tweets %>%
   count(date) 
 
-ggplot(daily_tweets, aes(x = date, y = n)) +
+daily_tweets_plot <- ggplot(daily_tweets, aes(x = date, y = n)) +
   geom_line() +
-  theme_light()
+  theme_light() +
+  labs(y = "Number of Tweets",
+       x = "Date",
+       title = "Tweets on Climate Gentrification; 2020-2022")
+
+ggsave("plots/daily_tweets.png", daily_tweets_plot)
+daily_tweets_plot
 ```
 
 The date with the highest number of tweets about climate gentrification is March 4, 2021. On March 3rd, CNN released a story titled [High ground, high prices](https://www.cnn.com/interactive/2021/03/us/climate-gentrification-cnnphotos-invs/), which reported on climate gentrification. Specific problems discussed in the article include Miami's Little Haiti neighborhood and New Orleans, particularly after displacement caused by Hurricane Katrina.
@@ -106,12 +112,15 @@ top_terms
 
 
 ```{r plot_top_terms}
-top_terms %>%
+terms_plot <- top_terms %>%
   mutate(term = reorder(term, beta)) %>%
   ggplot(aes(term, beta, fill = factor(topic))) +
   geom_col(show.legend = FALSE) +
   facet_wrap(~ topic, scales = "free") +
   coord_flip()
+
+ggsave("plots/twitter_topic_terms.png", terms_plot)
+terms_plot
 ```
 
 ```{r topic_names}
