@@ -16,7 +16,6 @@ Use the data you plan to use for your final project:
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, warning = FALSE)
 library(here)
-library(pdftools)
 library(quanteda)
 library(tm)
 library(topicmodels)
