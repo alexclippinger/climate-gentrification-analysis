@@ -10,18 +10,13 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r packages, results='hide', message=FALSE, warning=FALSE}
 library(quanteda)
-# devtools::install_github("quanteda/quanteda.sentiment") 
 library(quanteda.sentiment)
 library(quanteda.textstats)
 library(tidyverse)
-# library(tibble)
 library(tidytext)
-# library(lubridate)
-# library(wordcloud)
-# library(reshape2)
-# library(pals)
 library(readxl)
 library(pdftools)
+library(reshape2)
 library(tm)
 library(topicmodels)
 library(ldatuning)
@@ -34,39 +29,40 @@ raw_tweets <- read_excel("data/mentions_1.xlsx", skip = 7)
 
 tweets <- tibble(text = raw_tweets$Title, # Why not full text?
                  id = seq(1:length(raw_tweets$Title)),
-                 date = date(raw_tweets$Date))
+                 date = as.Date(raw_tweets$Date))
 
 # Simple plot of tweets per day
-tweets %>%
-  count(date) %>%
-  ggplot(aes(x = date, y = n)) +
+daily_tweets <- tweets %>%
+  count(date) 
+
+ggplot(daily_tweets, aes(x = date, y = n)) +
   geom_line() +
   theme_light()
 ```
+
+The date with the highest number of tweets about climate gentrification is March 4, 2021. On March 3rd, CNN released a story titled [High ground, high prices](https://www.cnn.com/interactive/2021/03/us/climate-gentrification-cnnphotos-invs/), which reported on climate gentrification. Specific problems discussed in the article include Miami's Little Haiti neighborhood and New Orleans, particularly after displacement caused by Hurricane Katrina.
+
+Another notable date is July 17th, 2021, which corresponds to the [Washington Post's article](https://www.washingtonpost.com/nation/2021/07/17/climate-gentrification-miami-condo-collapse/) covering climate gentrification following the tragic Surfside condo collapse on June 24th, 2021.
 
 ## Corpus
 
 ```{r corpus}
 cg_corp <- corpus(x = tweets, text_field = "text")
 cg_corp.stats <- summary(cg_corp)
-head(cg_corp.stats, n = 25)
 toks <- tokens(cg_corp, remove_punct = TRUE, remove_numbers = TRUE)
-#I added some project-specific stop words here
-add_stops <- c(stopwords("en"), "rt", "n")
+
+# Added some project-specific stop words here
+add_stops <- c(stopwords("en"), "rt", "n", "climate", "gentrification")
 toks1 <- tokens_select(toks, pattern = add_stops, selection = "remove")
 ```
 
 ```{r dfm}
 dfm_comm<- dfm(toks1, tolower = TRUE)
 dfm <- dfm_wordstem(dfm_comm)
-# dfm <- dfm_trim(dfm, min_docfreq = 2) #remove terms only appearing in one doc (min_termfreq = 10)
-
-print(head(dfm))
 
 #remove rows (docs) with all zeros
 sel_idx <- slam::row_sums(dfm) > 0 
 dfm <- dfm[sel_idx, ]
-#comments_df <- dfm[sel_idx, ]
 ```
 
 ```{r LDA_modeling}
@@ -84,12 +80,12 @@ FindTopicsNumber_plot(result)
 ```
 
 ```{r}
-k <- 7
+k <- 3
 
-topicModel_k7 <- LDA(dfm, k, method="Gibbs", control=list(iter = 500, verbose = 100))
+topicModel_k3 <- LDA(dfm, k, method="Gibbs", control=list(iter = 500, verbose = 100))
 
-tmResult <- posterior(topicModel_k7)
-terms(topicModel_k7, 10)
+tmResult <- posterior(topicModel_k3)
+terms(topicModel_k3, 10)
 theta <- tmResult$topics
 beta <- tmResult$terms
 vocab <- (colnames(beta))
@@ -97,7 +93,7 @@ vocab <- (colnames(beta))
 
 
 ```{r top_terms_topic}
-comment_topics <- tidy(topicModel_k7, matrix = "beta")
+comment_topics <- tidy(topicModel_k3, matrix = "beta")
 
 top_terms <- comment_topics %>%
   group_by(topic) %>%
@@ -119,7 +115,7 @@ top_terms %>%
 ```
 
 ```{r topic_names}
-top5termsPerTopic <- terms(topicModel_k7, 5)
+top5termsPerTopic <- terms(topicModel_k3, 5)
 topicNames <- apply(top5termsPerTopic, 2, paste, collapse=" ")
 ```
 
@@ -133,7 +129,11 @@ N <- length(exampleIds)
 # get topic proportions form example documents
 topicProportionExamples <- theta[exampleIds,]
 colnames(topicProportionExamples) <- topicNames
-vizDataFrame <- melt(cbind(data.frame(topicProportionExamples), document=factor(1:N)), variable.name = "topic", id.vars = "document")  
+vizDataFrame <- reshape2::melt(cbind(data.frame(topicProportionExamples), 
+                           document=factor(1:N)), 
+                     variable.name = "topic", 
+                     id.vars = "document")  
+
 ggplot(data = vizDataFrame, aes(topic, value, fill = document), ylab = "proportion") +
   geom_bar(stat="identity") +
   theme(axis.text.x = element_text(angle = 90, hjust = 1)) +  
@@ -141,3 +141,18 @@ ggplot(data = vizDataFrame, aes(topic, value, fill = document), ylab = "proporti
   facet_wrap(~ document, ncol = N)
 ```
 
+TO DO: Add discussion of limitations of topic modeling for short form text data, such as tweets.
+
+Given the nature of Twitter data in the context of topic modeling, our analysis focused on a small set of topics - 3. This was supported by the CaoJuan2009 and Deveaud2014 metrics. The three topics identified are, broadly...
+
+1. Miami (Top Words: Miami, rise, neighborhood, sea, resid(ence, ents))
+
+- It is intuitive that Miami is the primary focus of one of our topics. As stated previously, Miami neighborhood's such as Little Haiti have gained much national attention due to the pervasive climate gentrification in the area. Additionally, this can likely be attributed to active advocates for local communities in Miami, such as Valencia Gunder.
+
+2. Housing Crisis (Top Words: Communities, hous(e, ing), will, crisis, people)
+
+- The second topic focuses on the housing crisis and impact on individual's living situations as a result of climate gentrification.
+
+3. Change (Top Words: Change, new, move, now, impact)
+
+- The final topic addresses action being taken to create impactful change. The top 5 words are encouraging public participation in the issue and relate to the advocacy surrounding climate gentrification.
