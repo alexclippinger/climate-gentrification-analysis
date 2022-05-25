@@ -850,9 +850,7 @@ The tokens inside the 10-word window are the target while the tokens outside the
 
 
 
-```{r}
 
-```
 
 ```{r}
 # create token named "twitter_token"
@@ -867,8 +865,8 @@ twitter_token <- create_token(
 
 ```{r}
 ## search for 100 tweets using the #rstats hashtag
-cg_tweets <- search_tweets(q = "#climategentrification",
-                               n = 100)
+cg_tweets <- search_tweets("#climategentrification OR 'climate gentrification'", n = 10,
+                             include_rts = TRUE)
 # view the first 3 rows of the dataframe
 head(cg_tweets, n = 3)
 ```
