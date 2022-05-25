@@ -150,9 +150,9 @@ ggplot(data = vizDataFrame, aes(topic, value, fill = document), ylab = "proporti
   facet_wrap(~ document, ncol = N)
 ```
 
-TO DO: Add discussion of limitations of topic modeling for short form text data, such as tweets.
+Topic modeling for short form text data, such as tweets, has important limitations. For instance, given the character limit imposed on users, there is pervasive use of slang, short-hand words, and other text that will not be parsed by a topic model such as LDA. 
 
-Given the nature of Twitter data in the context of topic modeling, our analysis focused on a small set of topics - 3. This was supported by the CaoJuan2009 and Deveaud2014 metrics. The three topics identified are, broadly...
+Given the nature of Twitter data in the context of topic modeling, our analysis focused on only 3 topics. This was supported by the CaoJuan2009 and Deveaud2014 metrics. The three topics identified are, broadly...
 
 1. Miami (Top Words: Miami, rise, neighborhood, sea, resid(ence, ents))
 
