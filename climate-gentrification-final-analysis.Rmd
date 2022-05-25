@@ -1,0 +1,35 @@
+---
+title: "Climate Gentrification Sentiment Analysis"
+author: "Halina Do-Linh"
+date: '2022-05-25'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# attached packages
+library(tidyr) #text analysis in R
+library(lubridate) #working with date data
+library(pdftools) #read in pdfs
+library(tidyverse)
+library(tidytext)
+library(here)
+library(LexisNexisTools) #Nexis Uni data wrangling
+library(sentimentr)
+library(readr)
+```
+
+# Sentiment & Temporal Plan
+
+- look at all nrc emotions 
+- dial down into one or two emotions 
+- temporal sentiments: specific emotions and neg/pos/neutral
+
+
+- plot frequencies of both to compare social media frequency vs academic/published journal frequency 
+
+- word relationship using geom_node and geom_edge ("scary plots")
+- correlations
+- hashtag word cloud
+
