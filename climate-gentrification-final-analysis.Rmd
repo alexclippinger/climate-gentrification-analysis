@@ -1,8 +1,8 @@
 ---
-title: "Climate Gentrification Sentiment Analysis"
-author: "Halina Do-Linh"
+title: "EDS 231 Final Project: Climate Gentrification Text & Sentiment Analysis"
+author: "Alex Clippinger, Halina Do-Linh, Desik Somasundaram, Alex Vand"
 date: '2022-05-25'
-output: html_document
+output: pdf_document
 ---
 
 ```{r setup, include=FALSE}
@@ -10,14 +10,30 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # attached packages
 library(tidyr) #text analysis in R
-library(lubridate) #working with date data
-library(pdftools) #read in pdfs
+library(lubridate) # working with date data
 library(tidyverse)
 library(tidytext)
 library(here)
-library(LexisNexisTools) #Nexis Uni data wrangling
+library(LexisNexisTools) # Nexis Uni data wrangling
 library(sentimentr)
 library(readr)
+library(quanteda)
+library(quanteda.textstats)
+library(quanteda.textplots)
+library(readtext) # quanteda subpackage for reading pdf
+library(tm)
+library(topicmodels)
+library(ldatuning)
+library(reshape2)
+library(ggplot2)
+library(forcats)
+library(stringr)
+library(widyr)# pairwise correlations
+library(igraph) # network plots
+library(ggraph)
+library(patchwork)
+library(wordcloud) # visualization of common words in the data set
+library(rtweet) # load twitter library - the rtweet library is recommended now over twitteR
 ```
 
 # Sentiment & Temporal Plan
