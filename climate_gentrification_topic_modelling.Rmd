@@ -39,6 +39,9 @@ library(ggraph)
 library(LexisNexisTools) #Nexis Uni data wrangling
 library(sentimentr)
 library(patchwork)
+library(wordcloud) #visualization of common words in the data set
+# load twitter library - the rtweet library is recommended now over twitteR
+library(rtweet)
 ```
 
 ## Import Nexis Uni Data
@@ -61,10 +64,6 @@ cg_data <- lnt_read(my_files) #Object of class 'LNT output'
 cg_meta_df <- cg_data@meta
 cg_articles_df <- cg_data@articles
 cg_paragraphs_df <- cg_data@paragraphs
-
-cg_data2<- data_frame(element_id = seq(1:length(cg_meta_df$Headline)), 
-                            Date = cg_meta_df$Date, 
-                            Headline = cg_meta_df$Headline)
 ```
 
 
@@ -80,7 +79,9 @@ cg_corp.stats <- summary(cg_corp)
 head(cg_corp.stats, n = 25)
 toks <- tokens(cg_corp, remove_punct = TRUE, remove_numbers = TRUE)
 #I added some project-specific stop words here
-add_stops <- c(stopwords("en"), "like", "just", "say", "year")
+more_stops <- c(stopwords("en"), "like", "just", "say", "year")
+add_stops<- tibble(word = c(stop_words$word, more_stops)) 
+stop_vec <- as_vector(add_stops)
 toks1 <- tokens_select(toks, pattern = add_stops, selection = "remove")
 
 ```
@@ -311,5 +312,565 @@ Since the k=7 model scored nearly 55%/50% on the optimization metric and did not
 However, as mentioned earlier, the newness and specificity of our search term does not make it well suited for topic modelling analysis.
 
 
+### 5 Clean Nexis Uni data
 
+```{r nexis_data cloud seeding cleaning, message=FALSE}
+#May be of use for assignment: using the full text from the articles
+cg_dat2<- data_frame(element_id = seq(1:length(cg_meta_df$Headline)), 
+                            Date = cg_meta_df$Date, 
+                            Headline = cg_meta_df$Headline)
+
+
+cg_paragraphs_dat <- data_frame(element_id = cg_paragraphs_df$Art_ID, 
+                                       Text  = cg_paragraphs_df$Paragraph)
+#
+cg_dat3 <- inner_join(cg_dat2,cg_paragraphs_dat, by = "element_id") %>% 
+                  janitor::clean_names()
+
+cg_dat3 <- subset(cg_dat3, text != " " )
+cg_dat3 <- cg_dat3[!grepl("POSTED", cg_dat3$text,ignore.case = TRUE),]
+cg_dat3 <- cg_dat3[!grepl("GRAPHIC", cg_dat3$text,ignore.case = TRUE),]
+cg_dat3 <- cg_dat3[!grepl(":", cg_dat3$text),]
+cg_dat3 <- cg_dat3[!grepl("LINK TO", cg_dat3$text,ignore.case = TRUE),]
+cg_dat3 <- cg_dat3[grepl("[a-zA-Z]", cg_dat3$text),]
+
+```
+
+```{r}
+bing_sent <- get_sentiments('bing') #grab the bing sentiment lexicon from tidytext
+#head(bing_sent, n = 20)
+```
+
+```{r}
+
+#unnest to word-level tokens, remove stop words, and join sentiment words
+cg_text_words <- cg_dat3  %>% 
+  unnest_tokens(output = word, input = text, token = 'words')
+ 
+cg_sent_words <- cg_text_words %>% #break text into individual words
+  anti_join(stop_words, by = 'word') %>% #returns only the rows without stop words
+  inner_join(bing_sent, by = 'word') #joins and retains only sentiment words
+```
+
+### 6 Explore dataset
+
+```{r}
+nrc_sent <- get_sentiments('nrc') %>% 
+            filter(!sentiment %in% c("positive","negative")) #requires downloading a large dataset via prompt
+
+nrc_fear <- get_sentiments("nrc") %>% 
+  filter(sentiment == "fear")
+
+#most common words by sentiment
+cg_fear_words <- cg_dat3  %>%
+  unnest_tokens(output = word, input = text, token = 'words') %>%
+  inner_join(nrc_fear) %>%
+  count(word, sort = TRUE)
+
+cg_word_counts <- cg_text_words %>%
+  inner_join(nrc_sent) %>%
+  count(word, sentiment, sort = TRUE) %>%
+  ungroup()
+```
+
+### 7 Trends in Sentiment over time
+
+```{r}
+cg_sent_counts <- cg_text_words %>%
+        inner_join(nrc_sent) %>%
+        group_by(date) %>%
+        count(sentiment, sort = TRUE) %>%
+        mutate(sentwords_per_day = sum(n)) %>%
+        mutate(pct_contribution = ((n/sentwords_per_day)*100))
+
+cg_sent_counts %>%
+  group_by(date) %>%
+  ggplot(aes(date, pct_contribution, group=sentiment, color=sentiment))  +
+  geom_smooth( method="lm", se=F)  +
+  labs(x = "Date",
+       y = "Contribution to sentiment(%)",
+       title = "Trendlines of % Contribution to Overall Sentiment")
+```
+
+```{r tweet_data}
+
+raw_tweets <- readxl::read_excel(here("data","twitter_data_agg.xlsx"),skip=6)
+
+dat<- raw_tweets[,c(4,6)] # Extract Date and Title fields
+
+
+
+
+tweets <- tibble(text = dat$Title,
+                  id = seq(1:length(dat$Title)),
+                 date = as.Date(dat$Date,'%yyyy-%mm-%dd'))
+
+
+#head(tweets$text, n = 10)
+
+#simple plot of tweets per day
+tweets %>%
+  count(date) %>%
+  ggplot(aes(x = date, y = n))+
+  geom_line()
+
+```
+
+```{r cleaning_tweets}
+
+#let's clean up the URLs from the tweets
+tweets$text <- gsub("http[^[:space:]]*", "",tweets$text)
+tweets$text <- str_to_lower(tweets$text)
+
+#load sentiment lexicons
+bing_sent <- get_sentiments('bing')
+nrc_sent <- get_sentiments('nrc')
+
+#tokenize tweets to individual words
+words <- tweets %>%
+  select(id, date, text) %>%
+  unnest_tokens(output = word, input = text, token = "words") %>%
+  anti_join(stop_words, by = "word") %>%
+  left_join(bing_sent, by = "word") %>%
+  left_join(
+    tribble(
+      ~sentiment, ~sent_score,
+      "positive", 1,
+      "negative", -1),
+    by = "sentiment")
+```
+
+```{r sentiment_calculations}
+#take average sentiment score by tweet
+tweets_sent <- tweets %>%
+  left_join(
+    words %>%
+      group_by(id) %>%
+      summarize(
+        sent_score = mean(sent_score, na.rm = T)),
+    by = "id")
+
+neutral <- length(which(tweets_sent$sent_score == 0))
+positive <- length(which(tweets_sent$sent_score > 0))
+negative <- length(which(tweets_sent$sent_score < 0))
+
+Sentiment <- c("Positive","Neutral","Negative")
+Count <- c(positive,neutral,negative)
+output <- data.frame(Sentiment,Count)
+output$Sentiment<-factor(output$Sentiment,levels=Sentiment)
+ggplot(output, aes(x=Sentiment,y=Count))+
+  geom_bar(stat = "identity", aes(fill = Sentiment))+
+  scale_fill_manual("legend", values = c("Positive" = "green", "Neutral" = "black", "Negative" = "red"))+
+  ggtitle("Barplot of Sentiment in Climate Gentrification tweets")
+```
+
+```{r plot_sentiment_by_day}
+# tally sentiment score per day
+daily_sent <- tweets_sent %>%
+  group_by(date) %>%
+  summarize(sent_score = mean(sent_score, na.rm = T))
+
+daily_sent %>%
+  ggplot( aes(x = date, y = sent_score)) +
+  geom_line() +
+    labs(x = "Date",
+    y = "Avg Sentiment Score",
+    title = "Daily Tweet Sentiment",
+    subtitle = "Climate Gentrification Tweets")
+
+```
+
+
+```{r create_corpus}
+corpus <- corpus(dat$Title) #enter quanteda
+#summary(corpus)
+```
+
+```{r quanteda_cleaning}
+tokens <- tokens(corpus) #tokenize the text so each doc (page, in this case) is a list of tokens (words)
+
+#examine the uncleaned version
+#tokens
+
+#clean it up
+tokens <- tokens(tokens, remove_punct = TRUE,
+                      remove_numbers = TRUE)
+
+tokens <- tokens_select(tokens, stopwords('english'),selection='remove') #stopwords lexicon built in to quanteda
+
+#tokens <- tokens_wordstem(tokens) #stem words down to their base form for comparisons across tense and quantity
+
+tokens <- tokens_tolower(tokens)
+
+```
+
+We can use the kwic function (keywords-in-context) to briefly examine the context in which certain words or patterns appear.
+
+```{r initial_analysis}
+head(kwic(tokens, pattern = phrase("climate gentrification"), window = 5))
+
+
+```
+
+
+```{r explore_hashtags}
+hash_tweets <- tokens(corpus, remove_punct = TRUE) %>% 
+               tokens_keep(pattern = "#*")
+
+dfm_hash<- dfm(hash_tweets)
+
+tstat_freq <- textstat_frequency(dfm_hash, n = 100)
+head(tstat_freq, 10)
+
+#tidytext gives us tools to convert to tidy from non-tidy formats
+hash_tib<- tidy(dfm_hash)
+
+hash_tib %>%
+   count(term) %>%
+   with(wordcloud(term, n, max.words = 100))
+
+
+```
+
+
+Create the sparse matrix representation known as the document-feature matrix. quanteda's textstat_polarity function has multiple ways to combine polarity to a single score. The sent_logit value to fun argument is the log of (pos/neg) counts.
+
+```{r}
+
+dfm <- dfm(tokens)
+
+#topfeatures(dfm, 12)
+
+dfm.sentiment <- dfm_lookup(dfm, dictionary = data_dictionary_LSD2015)
+
+#head(textstat_polarity(tokens, data_dictionary_LSD2015, fun = sent_logit))
+
+
+```
+
+**1.  Think about how to further clean a twitter data set. Let's assume that the mentions of twitter accounts is not useful to us. Remove them from the text field of the tweets tibble.**
+
+```{r}
+theString <- unlist(strsplit(tweets$text, " "))
+regex <- "(^|[^@\\w])@(\\w{1,15})\\b"
+tweets$text <-gsub(regex, "", tweets$text)
+```
+
+```{r}
+tokenized_tweets <- tweets %>%
+                    unnest_tokens(word, text)
+```
+
+
+
+```{r}
+data(stop_words)
+```
+
+**2.  Compare the ten most common terms in the tweets per day.  Do you notice anything interesting?**
+
+
+```{r}
+words_by_date <- tokenized_tweets %>%
+    anti_join(stop_words) %>%
+    group_by(date) %>% 
+    count(date, word)
+
+top_words_by_date <- words_by_date %>% group_by(date) %>% top_n(n = 10, wt = n)
+top_words_by_date[order(top_words_by_date$n, decreasing = TRUE),]
+```
+It is evident that throughout all the days, "ipcc", "climate", "report" and "change" are the top words. On some days, words like "dr." and people's last names made it to the top 10 indicating the release of important publications. 
+
+
+**3.  Wordcloud.**
+
+
+
+```{r}
+words %>%
+inner_join(get_sentiments("bing")) %>%
+count(word, sentiment, sort = TRUE) %>%
+acast(word ~ sentiment, value.var = "n", fill = 0) %>%
+comparison.cloud(colors = c("red", "green"),
+                   max.words = 100)
+```
+**4. Let's say we are interested in the most prominent entities in the Twitter discussion.  Which are the top 10 most tagged accounts in the data set. Hint: the "explore_hashtags" chunk is a good starting point.**
+```{r}
+at_tweets <- tokens(corpus, remove_punct = TRUE) %>% 
+               tokens_keep(pattern = "@*")
+
+dfm_at<- dfm(at_tweets)
+
+tstat_freq <- textstat_frequency(dfm_at, n = 10)
+
+tstat_freq 
+
+
+```
+
+**5. The Twitter data download comes with a variable called "Sentiment" that must be calculated by Brandwatch.  Use your own method to assign each tweet a polarity score (Positive, Negative, Neutral) and compare your classification to Brandwatch's (hint: you'll need to revisit the "raw_tweets" data frame).**   
+```{r}
+#take average sentiment score by tweet
+tweets_sent <- tweets %>%
+  left_join(
+    words %>%
+      group_by(id) %>%
+      summarize(
+        sent_score = mean(sent_score, na.rm = T)),
+    by = "id")
+
+neutral <- length(which(tweets_sent$sent_score == 0))
+positive <- length(which(tweets_sent$sent_score > 0))
+negative <- length(which(tweets_sent$sent_score < 0))
+
+b_neutral <- length(which(raw_tweets$Sentiment == "neutral"))
+b_positive <- length(which(raw_tweets$Sentiment =="positive"))
+b_negative <- length(which(raw_tweets$Sentiment == "negative"))
+
+
+Sentiment <- c("Positive","Neutral","Negative")
+Count_Computed <- c(positive,neutral,negative)
+Count_Brandwatch <- c(b_positive,b_neutral,b_negative)
+output <- data.frame(Sentiment,Count_Computed,Count_Brandwatch)
+output$Sentiment<-factor(output$Sentiment,levels=Sentiment)
+brandwatch <- ggplot(output, aes(x=Sentiment,y=Count_Brandwatch))+
+              geom_bar(stat = "identity", aes(fill = Sentiment))+
+              scale_fill_manual("legend", values = c("Positive" = "green", "Neutral" = "black", "Negative" = "red"))+
+              ggtitle("Barplot of Sentiment in Climate Gentrification tweets-Brandwatch Method")
+
+computed <- ggplot(output, aes(x=Sentiment,y=Count_Computed))+
+              geom_bar(stat = "identity", aes(fill = Sentiment))+
+              scale_fill_manual("legend", values = c("Positive" = "green", "Neutral" = "black", "Negative" = "red"))+
+              ggtitle("Barplot of Sentiment in Climate Gentrification tweets-Computed")
+
+brandwatch/computed
+
+```
+
+```{r pdf_import}
+
+#I'm adding some additional, context-specific stop words to stop word lexicon
+#more_stops <-c("2015","2016", "2017", "2018", "2019", "2020", "www.epa.gov", "https")
+#add_stops<- tibble(word = c(stop_words$word, more_stops)) 
+#stop_vec <- as_vector(add_stops)
+
+```
+
+## Tidying and Exploring Data
+
+Now we'll create some different data objects that will set us up for the subsequent analyses
+
+```{r tidy}
+
+#convert to tidy format and apply my stop words
+raw_text <- tidy(cg_corp)
+
+#Distribution of most frequent words across documents
+raw_words <- raw_text %>%
+  unnest_tokens(word, text) %>%
+  anti_join(add_stops, by = 'word') %>%
+  count(word, sort = TRUE)
+
+report_words <- raw_words
+ 
+par_tokens <- unnest_tokens(raw_text, output = paragraphs, input = text, token = "paragraphs")
+
+par_tokens <- par_tokens %>%
+ mutate(par_id = 1:n())
+
+par_words <- unnest_tokens(par_tokens, output = word, input = paragraphs, token = "words")
+
+```
+
+Let's see which words tend to occur close together in the text. This is a way to leverage word relationships (in this case, co-occurence in a single paragraph) to give us some understanding of the things discussed in the documents.
+
+```{r co-occur_paragraphs}
+word_pairs <- par_words %>% 
+  pairwise_count(word, par_id, sort = TRUE, upper = FALSE) %>%
+  anti_join(add_stops, by = c("item1" = "word")) %>%
+  anti_join(add_stops, by = c("item2" = "word"))
+```
+
+Now we can visualize
+
+```{r co-occur_plots}
+word_pairs %>%
+  filter(n >= 200) %>%
+  graph_from_data_frame() %>%
+  ggraph(layout = "fr") +
+  geom_edge_link(aes(edge_alpha = n, edge_width = n), edge_colour = "dodgerblue") +
+  geom_node_point(size = 5) +
+  geom_node_text(aes(label = name), repel = TRUE, 
+                 point.padding = unit(0.2, "lines")) +
+  theme_void()
+```
+
+
+```{r corr_paragraphs}
+ 
+word_cors <- par_words %>% 
+  add_count(par_id) %>% 
+  filter(n >= 200) %>% 
+  select(-n) %>%
+  pairwise_cor(word, par_id, sort = TRUE)
+
+  word_cors %>%
+  filter(item1 %in% c("climate", "gentrification", "equity", "income"))%>%
+  group_by(item1) %>%
+  top_n(6) %>%
+  ungroup() %>%
+  mutate(item1 = as.factor(item1),
+  name = reorder_within(item2, correlation, item1)) %>%
+  ggplot(aes(y = name, x = correlation, fill = item1)) + 
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~item1, ncol = 2, scales = "free")+
+  scale_y_reordered() +
+  labs(y = NULL,
+         x = NULL,
+         title = "Correlations with key words",
+         subtitle = "Climate gentrification NEXIS UNI")
+  
+  #let's zoom in on just one of our key terms
+   gent_cors <- word_cors %>% 
+  filter(item1 == "gentrification") %>%
+   mutate(n = 1:n())
+ 
+```
+
+
+
+```{r corr_network}
+justice_cors  %>%
+  filter(n <= 50) %>%
+  graph_from_data_frame() %>%
+  ggraph(layout = "fr") +
+  geom_edge_link(aes(edge_alpha = correlation, edge_width = correlation), edge_colour = "cyan4") +
+  geom_node_point(size = 5) +
+  geom_node_text(aes(label = name), repel = TRUE, 
+                 point.padding = unit(0.2, "lines")) +
+  theme_void()
+```
+
+Now let's look at the tf-idf term we talked about. Remember, this statistic goes beyond simple frequency calculations within a document to control for overall commonality across documents
+
+```{r}
+report_tf_idf <- report_words %>%
+  bind_tf_idf(word, year, n) %>% 
+  select(-total) %>%
+  arrange(desc(tf_idf))
+
+report_tf_idf %>%
+  group_by(year) %>%
+  slice_max(tf_idf, n = 10) %>%
+  ungroup() %>%
+  filter(nchar(word) > 2)%>%
+  ggplot(aes(tf_idf, fct_reorder(word, tf_idf), fill = year)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~year, ncol = 2, scales = "free") +
+  labs(x = "tf-idf", y = NULL)
+```
+
+So that gives an idea which words are frequent and unique to certain documents.
+
+Now let's switch gears to quanteda for some additional word relationship tools. We'll also get into some ways to assess the similarity of documents.
+
+```{r quanteda_init}
+tokens <- tokens(cg_corp, remove_punct = TRUE)
+toks1<- tokens_select(tokens, min_nchar = 3)
+toks1 <- tokens_tolower(toks1)
+toks1 <- tokens_remove(toks1, pattern = (stop_vec))
+dfm <- dfm(toks1)
+
+#first the basic frequency stat
+tstat_freq <- textstat_frequency(dfm, n = 5, groups = year)
+head(tstat_freq, 10)
+
+```
+
+Another useful word relationship concept is that of the n-gram, which essentially means tokenizing at the multi-word level
+
+```{r convert_dfm}
+toks2 <- tokens_ngrams(toks1, n=2)
+dfm2 <- dfm(toks2)
+dfm2 <- dfm_remove(dfm2, pattern = c(stop_vec))
+freq_words2 <- textstat_frequency(dfm2, n=20)
+freq_words2$token <- rep("bigram", 20)
+freq_words2
+#tokens1 <- tokens_select(tokens1,pattern = stopwords("en"), selection = "remove")
+```
+
+Now we can upgrade that by using all of the frequencies for each word in each document and calculating a chi-square to see which words occur significantly more or less within a particular target document
+
+```{r}
+keyness <- textstat_keyness(dfm, target = 1)
+textplot_keyness(keyness)
+```
+
+And finally, we can run a hierarchical clustering algorithm to assess document similarity. This tends to be more informative when you are dealing with a larger number of documents, but we'll add it here for future reference.
+
+```{r hierarch_clust}
+dist <- as.dist(textstat_dist(dfm))
+clust <- hclust(dist)
+plot(clust, xlab = "Distance", ylab = NULL)
+```
+
+## 1.  What are the most frequent trigrams in the dataset? How does this compare to the most frequent bigrams? Which n-gram seems more informative here, and why? 
+
+```{r}
+toks3 <- tokens_ngrams(toks1, n=3)
+dfm3 <- dfm(toks3)
+dfm3 <- dfm_remove(dfm3, pattern = c(stop_vec))
+freq_words3 <- textstat_frequency(dfm3, n=20)
+freq_words3$token <- rep("trigram", 20)
+freq_words2
+freq_words3
+#tokens1 <- tokens_select(tokens1,pattern = stopwords("en"), selection = "remove")
+```
+
+
+### Miami and climate gentrification as multi-word term of interest
+
+```{r}
+MIA_cg <- c("Miami", "climate gentrification")
+toks_inside <- tokens_keep(tokens, pattern = MIA_cg, window = 10)
+toks_inside <- tokens_remove(toks_inside, pattern = MIA_cg) # remove the keywords
+toks_outside <- tokens_remove(tokens, pattern = MIA_cg, window = 10)
+```
+
+
+```{r}
+dfmat_inside <- dfm(toks_inside)
+dfmat_outside <- dfm(toks_outside)
+
+tstat_key_inside <- textstat_keyness(rbind(dfmat_inside, dfmat_outside), 
+                                     target = seq_len(ndoc(dfmat_inside)))
+head(tstat_key_inside, 25)
+```
+
+The tokens inside the 10-word window are the target while the tokens outside the 10-word window are the reference.
+
+
+
+```{r}
+
+```
+
+```{r}
+# create token named "twitter_token"
+twitter_token <- create_token(
+  app = appname,
+  consumer_key = key,
+  consumer_secret = secret,
+  access_token = access_token,
+  access_secret = access_secret)
+```
+
+
+```{r}
+## search for 100 tweets using the #rstats hashtag
+cg_tweets <- search_tweets(q = "#climategentrification",
+                               n = 100)
+# view the first 3 rows of the dataframe
+head(cg_tweets, n = 3)
+```
 
