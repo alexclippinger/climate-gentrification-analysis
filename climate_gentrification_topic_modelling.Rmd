@@ -393,7 +393,7 @@ cg_sent_counts %>%
 
 ```{r tweet_data}
 
-raw_tweets <- readxl::read_excel(here("data","twitter_data_agg.xlsx"),skip=6)
+raw_tweets <- readxl::read_excel(here("data","twitter_data_agg.xlsx"), col_type = 'text', skip=6)
 
 dat<- raw_tweets[,c(4,6)] # Extract Date and Title fields
 
