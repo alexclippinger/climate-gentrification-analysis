@@ -20,10 +20,10 @@ library(readr)
 library(quanteda)
 library(quanteda.textstats)
 library(quanteda.textplots)
-library(readtext) # quanteda subpackage for reading pdf
+#library(readtext) # quanteda subpackage for reading pdf
 library(tm)
-library(topicmodels)
-library(ldatuning)
+#library(topicmodels)
+#library(ldatuning)
 library(reshape2)
 library(ggplot2)
 library(forcats)
@@ -34,6 +34,7 @@ library(ggraph)
 library(patchwork)
 library(wordcloud) # visualization of common words in the data set
 library(rtweet) # load twitter library - the rtweet library is recommended now over twitteR
+library(textdata) # load nrc sentiment lexicon
 ```
 
 # Sentiment & Temporal Plan
@@ -92,7 +93,7 @@ cg_nex_dat3 <- cg_nex_dat3[!grepl("LINK TO", cg_nex_dat3$text,ignore.case = TRUE
 cg_nex_dat3 <- cg_nex_dat3[grepl("[a-zA-Z]", cg_nex_dat3$text),]
 
 # clean the corpus
-cg_nex_corp <- corpus(x = cg_articles_df, text_field = "Article")
+cg_nex_corp <- corpus(x = cg_nex_articles_df, text_field = "Article")
 cg_nex_corp.stats <- summary(cg_nex_corp)
 head(cg_nex_corp.stats, n = 25)
 toks <- tokens(cg_nex_corp, remove_punct = TRUE, remove_numbers = TRUE)
@@ -100,7 +101,7 @@ toks <- tokens(cg_nex_corp, remove_punct = TRUE, remove_numbers = TRUE)
 more_stops <- c(stopwords("en"), "like", "just", "say", "year")
 add_stops<- tibble(word = c(stop_words$word, more_stops)) 
 stop_vec <- as_vector(add_stops)
-toks1 <- tokens_select(toks, pattern = add_stops, selection = "remove")
+tokens1 <- tokens_select(toks, pattern = stop_vec, selection = "remove")
 
 ```
 
@@ -436,13 +437,17 @@ word_pairs %>%
 ```{r corr_paragraphs}
 # plot correlations by paragraph
 word_cors <- par_words %>%
+  anti_join(add_stops, by = c("word" = "word")) %>%
   add_count(par_id) %>%
   filter(n >= 200) %>%
   select(-n) %>%
-  pairwise_cor(word, par_id, sort = TRUE)
+  pairwise_cor(word, par_id, sort = TRUE)  
+```
 
+
+```{r corr_paragraphs2}
 word_cors %>%
-  filter(item1 %in% c("climate", "gentrification", "equity", "income")) %>%
+  filter(item1 %in% c("undesirable", "income")) %>%
   group_by(item1) %>%
   top_n(6) %>%
   ungroup() %>%
@@ -459,15 +464,17 @@ word_cors %>%
     subtitle = "Climate gentrification NEXIS UNI"
   )
 
-# let's zoom in on just one of our key terms
-gent_cors <- word_cors %>%
-  filter(item1 == "gentrification") %>%
-  mutate(n = 1:n())
+
 ```
 
 ```{r corr_network}
+# let's zoom in on just one of our key terms
+undesirable_cors <- word_cors %>%
+  filter(item1 == "undesirable") %>%
+  mutate(n = 1:n())
+
 # correlation network
-justice_cors  %>%
+undesirable_cors  %>%
   filter(n <= 50) %>%
   graph_from_data_frame() %>%
   ggraph(layout = "fr") +
@@ -478,102 +485,67 @@ justice_cors  %>%
   theme_void()
 ```
 
-#### ???
-Now let's look at the tf-idf term we talked about. Remember, this statistic goes beyond simple frequency calculations within a document to control for overall commonality across documents
-```{r}
-report_tf_idf <- report_words %>%
-  bind_tf_idf(word, year, n) %>% 
-  select(-total) %>%
-  arrange(desc(tf_idf))
 
-report_tf_idf %>%
-  group_by(year) %>%
-  slice_max(tf_idf, n = 10) %>%
-  ungroup() %>%
-  filter(nchar(word) > 2)%>%
-  ggplot(aes(tf_idf, fct_reorder(word, tf_idf), fill = year)) +
-  geom_col(show.legend = FALSE) +
-  facet_wrap(~year, ncol = 2, scales = "free") +
-  labs(x = "tf-idf", y = NULL)
+```{r corr_network}
+# let's zoom in on just one of our key terms
+income_cors <- word_cors %>%
+  filter(item1 == "income") %>%
+  mutate(n = 1:n())
+
+# correlation network
+income_cors  %>%
+  filter(n <= 50) %>%
+  graph_from_data_frame() %>%
+  ggraph(layout = "fr") +
+  geom_edge_link(aes(edge_alpha = correlation, edge_width = correlation), edge_colour = "cyan4") +
+  geom_node_point(size = 5) +
+  geom_node_text(aes(label = name), repel = TRUE, 
+                 point.padding = unit(0.2, "lines")) +
+  theme_void()
 ```
 
 
-Now let's look at the tf-idf term we talked about. Remember, this statistic goes beyond simple frequency calculations within a document to control for overall commonality across documents
 
-```{r}
-report_tf_idf <- report_words %>%
-  bind_tf_idf(word, year, n) %>% 
-  select(-total) %>%
-  arrange(desc(tf_idf))
 
-report_tf_idf %>%
-  group_by(year) %>%
-  slice_max(tf_idf, n = 10) %>%
-  ungroup() %>%
-  filter(nchar(word) > 2)%>%
-  ggplot(aes(tf_idf, fct_reorder(word, tf_idf), fill = year)) +
-  geom_col(show.legend = FALSE) +
-  facet_wrap(~year, ncol = 2, scales = "free") +
-  labs(x = "tf-idf", y = NULL)
-```
-
-So that gives an idea which words are frequent and unique to certain documents.
-
-Now let's switch gears to quanteda for some additional word relationship tools. We'll also get into some ways to assess the similarity of documents.
-
-```{r quanteda_init}
-tokens <- tokens(cg_nex_corp, remove_punct = TRUE)
-toks1<- tokens_select(tokens, min_nchar = 3)
-toks1 <- tokens_tolower(toks1)
-toks1 <- tokens_remove(toks1, pattern = (stop_vec))
-dfm <- dfm(toks1)
-
-#first the basic frequency stat
-tstat_freq <- textstat_frequency(dfm, n = 5, groups = year)
-head(tstat_freq, 10)
-```
 
 Another useful word relationship concept is that of the n-gram, which essentially means tokenizing at the multi-word level
 
 ```{r convert_dfm}
-toks2 <- tokens_ngrams(toks1, n=2)
+toks2 <- tokens_ngrams(tokens1, n=3)
 dfm2 <- dfm(toks2)
 dfm2 <- dfm_remove(dfm2, pattern = c(stop_vec))
 freq_words2 <- textstat_frequency(dfm2, n=20)
-freq_words2$token <- rep("bigram", 20)
+freq_words2$token <- rep("trigram", 20)
+freq_words2
+#tokens1 <- tokens_select(tokens1,pattern = stopwords("en"), selection = "remove")
+```
+```{r convert_dfm}
+toks2 <- tokens_ngrams(tokens1, n=3)
+dfm2 <- dfm(toks2)
+dfm2 <- dfm_remove(dfm2, pattern = c(stop_vec))
+dfm12 <- dfm_select(dfm2, pattern = c("undesirable"))
+freq_words2 <- textstat_frequency(dfm2,20)
+freq_words2$token <- rep("trigram", 20)
 freq_words2
 #tokens1 <- tokens_select(tokens1,pattern = stopwords("en"), selection = "remove")
 ```
 
-Now we can upgrade that by using all of the frequencies for each word in each document and calculating a chi-square to see which words occur significantly more or less within a particular target document
+#### Miami and climate gentrification as multi-word term of interest
+```{r}
+MIA_cg <- c("undesirable", "climate gentrification")
+toks_inside <- tokens_keep(tokens1, pattern = MIA_cg, window = 20)
+toks_inside <- tokens_remove(toks_inside, pattern = MIA_cg) # remove the keywords
+toks_outside <- tokens_remove(tokens1, pattern = MIA_cg, window = 20)
+```
 
 ```{r}
-keyness <- textstat_keyness(dfm, target = 1)
-textplot_keyness(keyness)
+dfmat_inside <- dfm(toks_inside)
+dfmat_outside <- dfm(toks_outside)
+
+tstat_key_inside <- textstat_keyness(rbind(dfmat_inside, dfmat_outside), 
+                                     target = seq_len(ndoc(dfmat_inside)))
+head(tstat_key_inside, 25)
 ```
-
-And finally, we can run a hierarchical clustering algorithm to assess document similarity. This tends to be more informative when you are dealing with a larger number of documents, but we'll add it here for future reference.
-
-```{r hierarch_clust}
-dist <- as.dist(textstat_dist(dfm))
-clust <- hclust(dist)
-plot(clust, xlab = "Distance", ylab = NULL)
-```
-
-## 1.  Most frequent trigrams in the dataset
-
-```{r}
-toks3 <- tokens_ngrams(toks1, n=3)
-dfm3 <- dfm(toks3)
-dfm3 <- dfm_remove(dfm3, pattern = c(stop_vec))
-freq_words3 <- textstat_frequency(dfm3, n=20)
-freq_words3$token <- rep("trigram", 20)
-freq_words2
-freq_words3
-#tokens1 <- tokens_select(tokens1,pattern = stopwords("en"), selection = "remove")
-```
-
-
 
 #### Wordcloud of hashtags
 ```{r explore_hashtags}
@@ -638,32 +610,7 @@ tstat_freq
 ```
 
 
-#### Miami and climate gentrification as multi-word term of interest
-```{r}
-MIA_cg <- c("Miami", "climate gentrification")
-toks_inside <- tokens_keep(tokens, pattern = MIA_cg, window = 10)
-toks_inside <- tokens_remove(toks_inside, pattern = MIA_cg) # remove the keywords
-toks_outside <- tokens_remove(tokens, pattern = MIA_cg, window = 10)
-```
-
-```{r}
-dfmat_inside <- dfm(toks_inside)
-dfmat_outside <- dfm(toks_outside)
-
-tstat_key_inside <- textstat_keyness(rbind(dfmat_inside, dfmat_outside), 
-                                     target = seq_len(ndoc(dfmat_inside)))
-head(tstat_key_inside, 25)
-```
-
-The tokens inside the 10-word window are the target while the tokens outside the 10-word window are the reference.
-
-
-## Spatial Analysis
-
 ## Topic Modeling Analysis
-
-
-
 
 ### Optimization for k 
 ```{r LDA_again}
