@@ -92,10 +92,10 @@ cg_nex_dat3 <- cg_nex_dat3[!grepl("LINK TO", cg_nex_dat3$text,ignore.case = TRUE
 cg_nex_dat3 <- cg_nex_dat3[grepl("[a-zA-Z]", cg_nex_dat3$text),]
 
 # clean the corpus
-cg_corp <- corpus(x = cg_articles_df, text_field = "Article")
-cg_corp.stats <- summary(cg_corp)
-head(cg_corp.stats, n = 25)
-toks <- tokens(cg_corp, remove_punct = TRUE, remove_numbers = TRUE)
+cg_nex_corp <- corpus(x = cg_articles_df, text_field = "Article")
+cg_nex_corp.stats <- summary(cg_nex_corp)
+head(cg_nex_corp.stats, n = 25)
+toks <- tokens(cg_nex_corp, remove_punct = TRUE, remove_numbers = TRUE)
 # added some project-specific stop words here
 more_stops <- c(stopwords("en"), "like", "just", "say", "year")
 add_stops<- tibble(word = c(stop_words$word, more_stops)) 
@@ -196,7 +196,7 @@ cg_nex_sent_words <- cg_nex_text_words %>% # break text into individual words
   inner_join(bing_sent, by = 'word') # joins and retains only sentiment words
 ```
 
-#### Add NRC fear sentiments
+#### Add NRC sentiment word count
 ```{r}
 cg_nex_word_counts <- cg_nex_text_words %>%
   inner_join(nrc_sent) %>%
@@ -211,15 +211,17 @@ cg_nex_sent_counts <- cg_nex_text_words %>%
         group_by(date) %>%
         count(sentiment, sort = TRUE) %>%
         mutate(sentwords_per_day = sum(n)) %>%
-        mutate(pct_contribution = ((n/sentwords_per_day)*100))
+        mutate(pct_contribution = ((n/sentwords_per_day)*100)) %>% 
+        filter(date >= "2018-01-01")
 
-cg_nex_sent_counts %>%
+cg_nex_sent_timeplot<-cg_nex_sent_counts %>%
   group_by(date) %>%
   ggplot(aes(date, pct_contribution, group=sentiment, color=sentiment))  +
-  geom_smooth( method="lm", se=F)  +
+  geom_smooth(span = 0.7)  +
   labs(x = "Date",
        y = "Contribution to sentiment(%)",
-       title = "NEXIS UNI-Trendlines of % Contribution to Overall Sentiment")
+       title = "NEXIS UNI")+
+  theme(legend.position = "none" )
 ```
 
 ### Twitter Sentiment
@@ -229,77 +231,164 @@ words <- tweets %>%
   select(id, date, text) %>%
   unnest_tokens(output = word,
                 input = text,
-                token = "words") %>%
-  anti_join(stop_words, by = "word") %>%
-  left_join(bing_sent, by = "word") %>%
-  left_join(tribble(~ sentiment, ~ sent_score,
-                    "positive", 1,
-                    "negative",-1),
-            by = "sentiment")
+                token = "words") # %>%
 ```
 
-#### Trends in Twitter sentiment over time
+#### Add NRC sentiment word count
 ```{r}
-cg_nex_sent_counts <- cg_nex_text_words %>%
+cg_t_word_counts <- words %>%
+  inner_join(nrc_sent) %>%
+  count(word, sentiment, sort = TRUE) %>%
+  ungroup()
+```
+
+
+#### Trends in Twitter sentiment over time
+```{r, fig.cap= "Twitter Trendlines of Overall Sentiment 2018-2022"}
+cg_t_sent_counts <- words %>%
         inner_join(nrc_sent) %>%
         group_by(date) %>%
         count(sentiment, sort = TRUE) %>%
         mutate(sentwords_per_day = sum(n)) %>%
         mutate(pct_contribution = ((n/sentwords_per_day)*100))
 
-cg_nex_sent_counts %>%
+cg_t_sent_timeplot<-cg_t_sent_counts %>%
   group_by(date) %>%
-  ggplot(aes(date, pct_contribution, group=sentiment, color=sentiment))  +
-  geom_smooth( method="lm", se=F)  +
+  ggplot(aes(date, pct_contribution, group=sentiment, color=sentiment)) +
+  geom_smooth(span = 0.7) +
   labs(x = "Date",
        y = "Contribution to sentiment(%)",
-       title = "NEXIS UNI-Trendlines of % Contribution to Overall Sentiment")
+       title = "TWITTER") +
+  theme(legend.position = "bottom")
 ```
 
 
-#### Calculate Sentiments and plot 
-```{r sentiment_calculations}
-# take average sentiment score by tweet
+```{r}
+(cg_nex_sent_timeplot+cg_t_sent_timeplot) + plot_layout(guides = "collect") & theme(legend.position = 'bottom')
+```
+
+Figure X1 shows the percent contribution to overall sentiment from the Nexis Uni data subset to 2018-2022 to better align with the Twitter data and the percent contribution to overall sentiment from the Twitter data.
+Both figures indicate that trust, anticipation and fear are the top 3 emotions in both the published sentiment from Nexis Uni data and people's sentiment from the Twitter data.
+Another interesting observation was the percentage contribution of anger and sadness is higher in Twitter data when compared to the Nexis Uni data.
+This aligns with our expectations as the emotions are similar yet more muted in the Nexis Uni data.
+
+```{r sentiment_calculations_t}
+#tokenize tweets to individual words
+words_forsent <- tweets %>%
+  select(id, date, text) %>%
+  unnest_tokens(output = word, input = text, token = "words") %>%
+  anti_join(stop_words, by = "word") %>%
+  left_join(bing_sent, by = "word") %>%
+  left_join(
+    tribble(
+      ~sentiment, ~sent_score,
+      "positive", 1,
+      "negative", -1),
+    by = "sentiment")
+
+#take average sentiment score by tweet
 tweets_sent <- tweets %>%
-  left_join(words %>%
-              group_by(id) %>%
-              summarize(sent_score = mean(sent_score, na.rm = T)),
-            by = "id")
+  left_join(
+    words_forsent %>%
+      group_by(id) %>%
+      summarize(
+        sent_score = mean(sent_score, na.rm = T)),
+    by = "id")
 
 neutral <- length(which(tweets_sent$sent_score == 0))
 positive <- length(which(tweets_sent$sent_score > 0))
 negative <- length(which(tweets_sent$sent_score < 0))
 
-Sentiment <- c("Positive", "Neutral", "Negative")
-Count <- c(positive, neutral, negative)
-output <- data.frame(Sentiment, Count)
-output$Sentiment <- factor(output$Sentiment, levels = Sentiment)
-ggplot(output, aes(x = Sentiment, y = Count)) +
-  geom_bar(stat = "identity", aes(fill = Sentiment)) +
-  scale_fill_manual("legend",
-                    values = c(
-                      "Positive" = "green",
-                      "Neutral" = "black",
-                      "Negative" = "red"
-                    )) +
-  ggtitle("Barplot of Sentiment in Climate Gentrification tweets")
+Sentiment <- c("Positive","Neutral","Negative")
+Count <- c(positive,neutral,negative)
+output <- data.frame(Sentiment,Count)
+output$Sentiment<-factor(output$Sentiment,levels=Sentiment)
+cg_sentplot_t <- ggplot(output, aes(x=Sentiment,y=Count))+
+  geom_bar(stat = "identity", aes(fill = Sentiment))+
+  scale_fill_manual("legend", values = c("Positive" = "#5ab4ac", "Neutral" = "lightgray", "Negative" = "#d8b365"))+
+  ggtitle("TWITTER")
 ```
 
-#### Plot of Sentiment by day
-```{r plot_sentiment_by_day}
-# tally sentiment score per day
-daily_sent <- tweets_sent %>%
-  group_by(date) %>%
-  summarize(sent_score = mean(sent_score, na.rm = T))
+```{r sentiment_calculations_nex}
+#tokenize tweets to individual words
+words_forsent_nex <-cg_nex_dat3  %>% 
+  unnest_tokens(output = word, input = text, token = 'words') %>%
+  anti_join(stop_words, by = "word") %>%
+  left_join(bing_sent, by = "word") %>%
+  left_join(
+    tribble(
+      ~sentiment, ~sent_score,
+      "positive", 1,
+      "negative", -1),
+    by = "sentiment")
 
-daily_sent %>%
-  ggplot( aes(x = date, y = sent_score)) +
-  geom_line() +
-    labs(x = "Date",
-    y = "Avg Sentiment Score",
-    title = "Daily Tweet Sentiment",
-    subtitle = "Climate Gentrification Tweets")
+#take average sentiment score by tweet
+nex_sent <- cg_nex_dat3 %>%
+  left_join(
+    words_forsent_nex %>%
+      group_by(element_id) %>%
+      summarize(
+        sent_score = mean(sent_score, na.rm = T)),
+    by = "element_id") %>% 
+  group_by(element_id) %>% 
+  summarize(
+        mean_sent_score = mean(sent_score, na.rm = T))
+
+neutral <- length(which(nex_sent$mean_sent_score == 0))
+positive <- length(which(nex_sent$mean_sent_score > 0))
+negative <- length(which(nex_sent$mean_sent_score < 0))
+
+Sentiment <- c("Positive","Neutral","Negative")
+Count <- c(positive,neutral,negative)
+nexoutput <- data.frame(Sentiment,Count)
+nexoutput$Sentiment<-factor(nexoutput$Sentiment,levels=Sentiment)
+
+cg_sentplot_nex <-ggplot(nexoutput, aes(x=Sentiment,y=Count))+
+  geom_bar(stat = "identity", aes(fill = Sentiment))+
+  scale_fill_manual("legend", values = c("Positive" = "#5ab4ac", "Neutral" = "lightgray", "Negative" = "#d8b365"))+
+  ggtitle("NEXIS UNI")
 ```
+
+```{r}
+(cg_sentplot_nex+cg_sentplot_t) + plot_layout(guides = "collect") & theme(legend.position = 'bottom')
+```
+Fig XX shows the overall sentiment score classification by publication for Nexis Uni and by tweet for the Twitter data.
+With the Nexis Uni publications being longer in length, we suspect there are less neutral classification given that neutral is discrete score of 0.
+Otherwise, the positive and negative sentiment distributions are similar when comparing the two data sources.
+
+```{r}
+cg_nex_word_nplot <- cg_nex_word_counts %>%
+  group_by(sentiment) %>%
+  slice_max(n, n = 10) %>% 
+  ungroup() %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(n, word, fill = sentiment)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~sentiment, scales = "free_y") +
+  labs(x = "NEXIS UNI Contribution to sentiment",
+       y = NULL)
+```
+
+```{r}
+cg_t_word_nplot <-cg_t_word_counts %>%
+  group_by(sentiment) %>%
+  slice_max(n, n = 10) %>% 
+  ungroup() %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(n, word, fill = sentiment)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~sentiment, scales = "free_y") +
+  labs(x = "TWITTER Contribution to sentiment",
+       y = NULL)
+```
+
+```{r, fig.height=10, fig.width=10}
+cg_nex_word_nplot/cg_t_word_nplot
+```
+Fig XX show the top 10 words for emotion by data source. The only top word that is common from both datasets is for the fear emotion, where the top word is "change". In joy and sadness, we see the word "income" is in the top three. Otherwise, we see very little similarities between the two datasets. This leads to think that the two sources may not be talking about the same topics within these emotions or they might be using different words to talk about the same topics. We will explore this further using topic modeling analysis. 
+
+We also noticed that words such as "undesirable"  and "income" are common in many of the emotions from the Twitter data. "Income" also comes up in multiple emotions in the Nexis Uni data. To further analyze this, we are going to use word relationship analysis to gain more context regarding the use of "undesirable" and "income". 
+
 
 #### Word relationships / Correlations of words in Nexis Uni
 ```{r tidy}
