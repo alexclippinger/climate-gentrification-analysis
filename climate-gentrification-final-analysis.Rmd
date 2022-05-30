@@ -637,52 +637,6 @@ tstat_freq <- textstat_frequency(dfm_at, n = 10)
 tstat_freq 
 ```
 
-#### Calculated our own sentiment scores (positive, negative, neutral) for tweets and compared with the brandwatch sentiment scores
-```{r}
-# take average sentiment score by tweet
-tweets_sent <- tweets %>%
-  left_join(words %>%
-              group_by(id) %>%
-              summarize(sent_score = mean(sent_score, na.rm = T)),
-            by = "id")
-
-neutral <- length(which(tweets_sent$sent_score == 0))
-positive <- length(which(tweets_sent$sent_score > 0))
-negative <- length(which(tweets_sent$sent_score < 0))
-
-b_neutral <- length(which(raw_tweets$Sentiment == "neutral"))
-b_positive <- length(which(raw_tweets$Sentiment == "positive"))
-b_negative <- length(which(raw_tweets$Sentiment == "negative"))
-
-
-Sentiment <- c("Positive", "Neutral", "Negative")
-Count_Computed <- c(positive, neutral, negative)
-Count_Brandwatch <- c(b_positive, b_neutral, b_negative)
-output <- data.frame(Sentiment, Count_Computed, Count_Brandwatch)
-output$Sentiment <- factor(output$Sentiment, levels = Sentiment)
-brandwatch <- ggplot(output, aes(x = Sentiment, y = Count_Brandwatch)) +
-  geom_bar(stat = "identity", aes(fill = Sentiment)) +
-  scale_fill_manual("legend",
-                    values = c(
-                      "Positive" = "green",
-                      "Neutral" = "black",
-                      "Negative" = "red"
-                    )) +
-  ggtitle("Barplot of Sentiment in Climate Gentrification tweets-Brandwatch Method")
-
-computed <- ggplot(output, aes(x = Sentiment, y = Count_Computed)) +
-  geom_bar(stat = "identity", aes(fill = Sentiment)) +
-  scale_fill_manual("legend",
-                    values = c(
-                      "Positive" = "green",
-                      "Neutral" = "black",
-                      "Negative" = "red"
-                    )) +
-  ggtitle("Barplot of Sentiment in Climate Gentrification tweets-Computed")
-
-brandwatch / computed
-```
-
 
 #### Miami and climate gentrification as multi-word term of interest
 ```{r}
