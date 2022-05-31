@@ -580,7 +580,7 @@ income_cors  %>%
 ```{r}
 undesirable_cg <- c("undesirable", "climate gentrification")
 undesirable_toks_inside <- tokens_keep(toks1, pattern = undesirable_cg, window = 20)
-undesirable_toks_inside <- tokens_remove(toks_inside, pattern = undesirable_cg) # remove the keywords
+undesirable_toks_inside <- tokens_remove(undesirable_toks_inside, pattern = undesirable_cg) # remove the keywords
 undesirable_toks_outside <- tokens_remove(toks1, pattern = undesirable_cg, window = 20)
 ```
 
