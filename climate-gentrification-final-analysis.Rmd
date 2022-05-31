@@ -513,18 +513,26 @@ word_pairs %>%
 
 ```{r corr_paragraphs}
 # plot correlations by paragraph
-word_cors <- par_words %>%
+if (!file.exists(word_cors.Rda)){
+  
+  word_cors <- par_words %>%
   anti_join(add_stops, by = c("word" = "word")) %>%
   add_count(par_id) %>%
   filter(n >= 200) %>%
   select(-n) %>%
   pairwise_cor(word, par_id, sort = TRUE)  
+
+  save(word_cors, file = "word_cors.Rda")
+  
+}
+
+load("analysisdata/word_cors.Rda")
 ```
 
 
 ```{r corr_paragraphs2}
 word_cors %>%
-  filter(item1 %in% c("undesirable", "income")) %>%
+  filter(item1 %in% c("income")) %>%
   group_by(item1) %>%
   top_n(6) %>%
   ungroup() %>%
@@ -595,7 +603,7 @@ undesirable_dfmat_outside <- dfm(undesirable_toks_outside)
 
 undesirable_tstat_key_inside <- textstat_keyness(rbind(undesirable_dfmat_inside, undesirable_dfmat_outside), 
                                      target = seq_len(ndoc(undesirable_dfmat_inside)))
-head(undesirable_tstat_key_inside, 25)
+head(undesirable_tstat_key_inside, 10)
 ```
 
 
@@ -614,7 +622,7 @@ income_dfmat_outside <- dfm(income_toks_outside)
 
 income_tstat_key_inside <- textstat_keyness(rbind(income_dfmat_inside, income_dfmat_outside), 
                                      target = seq_len(ndoc(income_dfmat_inside)))
-head(income_tstat_key_inside, 25)
+head(income_tstat_key_inside, 10)
 ```
 
 ### Word relationships / Correlations of words in Twitter Data
@@ -687,7 +695,7 @@ cg_t_word_cors %>%
     y = NULL,
     x = NULL,
     title = "Correlations with key words",
-    subtitle = "Climate gentrification NEXIS UNI"
+    subtitle = "Climate gentrification TWITTER"
   )
 
 
