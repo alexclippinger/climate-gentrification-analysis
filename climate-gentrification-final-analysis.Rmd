@@ -1082,6 +1082,8 @@ ggsave("plots/twitter_topic_terms.png", terms_plot)
 terms_plot
 ```
 
+![Twitter Topic Modeling Intertopic Distance Map for k=3](plots/topics_twitter.png)
+
 ```{r topic_names}
 cg_t_top5termsPerTopic <- terms(cg_t_topicModel_k3, 5)
 cg_t_topicNames <- apply(cg_t_top5termsPerTopic, 2, paste, collapse=" ")
