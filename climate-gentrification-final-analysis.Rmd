@@ -209,11 +209,11 @@ hash_tib %>%
 
 #### Convert to document feature matrix using `quanteda` `textstat_polarity()`
 ```{r}
-dfm <- dfm(tokens)
+cg_t_dfm <- dfm(cg_t_tokens)
 
 #topfeatures(dfm, 12)
 
-dfm.sentiment <- dfm_lookup(dfm, dictionary = data_dictionary_LSD2015)
+cg_t_dfm.sentiment <- dfm_lookup(cg_t_dfm, dictionary = data_dictionary_LSD2015)
 
 #head(textstat_polarity(tokens, data_dictionary_LSD2015, fun = sent_logit))
 ```
