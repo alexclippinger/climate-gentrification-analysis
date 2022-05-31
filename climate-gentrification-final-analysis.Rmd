@@ -726,6 +726,7 @@ ggsave("key_word_corr_t_plot.png",
        plot = key_word_corr_t_plot,
        path = "plots")
 ```
+![Keywords](plots/key_word_corr_t_plot.png)
 
 ```{r corr_undesirable2, eval=FALSE}
 # let's zoom in on just one of our key terms
@@ -748,6 +749,7 @@ ggsave("undesirable_corr_t_plot.png",
        plot = undesirable_corr_t_plot,
        path = "plots")
 ```
+![Twitter Undesirable Plot](plots/undesirable_corr_t_plot.png)
 
 ```{r corr_network2, eval=FALSE}
 # let's zoom in on just one of our key terms
@@ -770,8 +772,10 @@ ggsave("income_corr_t_plot.png",
        plot = income_corr_t_plot,
        path = "plots")
 ```
+![Twitter Income Plot](plots/income_corr_t_plot.png)
 
 #### "undesirable" and climate gentrification as multi-word term of interest in Nexis Uni
+
 ```{r}
 cg_t_undesirable_cg <- c("undesirable", "climate gentrification")
 cg_t_undesirable_toks_inside <- tokens_keep(cg_t_tokens, pattern = cg_t_undesirable_cg, window = 20)
@@ -806,8 +810,7 @@ head(cg_t_income_tstat_key_inside, 10)
 ```
 
 
-#N-gram comparison between Nexis Uni and Twitter data
-
+#### N-gram comparison between Nexis Uni and Twitter data
 
 ```{r convert_dfm1}
 toks2 <- tokens_ngrams(toks1, n=3)
@@ -828,7 +831,6 @@ cg_t_freq_words2$token <- rep("trigram", 20)
 cg_t_freq_words2
 #tokens1 <- tokens_select(tokens1,pattern = stopwords("en"), selection = "remove")
 ```
-
 
 ## Topic Modeling Analysis for Nexis Uni
 
