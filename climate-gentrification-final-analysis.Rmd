@@ -37,22 +37,27 @@ library(rtweet) # load twitter library - the rtweet library is recommended now o
 library(textdata) # load nrc sentiment lexicon
 ```
 
-# Sentiment & Temporal Plan
+# Background and Research question
 
-- look at all nrc emotions 
-- dial down into one or two emotions 
-- temporal sentiments: specific emotions and neg/pos/neutral
+Language allows us to articulate our thoughts and emotions. In our Ethics and Bias class, we listened to Valencia Gunder, a prominent climate activist, explain how the coining of the term “climate gentrification” finally gave rise to awareness about a problem and emotion that has been felt by low-income communities in Miami for several years now. The Keenan et al. 2018 paper talks about Miami-Dade County, Florida as a case study for market mechanisms enabling this phenomenon.
 
+Our initial research question was to understand the emergence of the term “climate gentrification” both spatially and temporally. The idea was this analysis would give insights into how language spreads and evolves, highlighting the emotions of those who have been historically left out of the conversation around climate action. Valencia Gunder mentioned how city officials and stakeholders often neglected the concerns of the people in the city of Miami before the term “climate gentrification” was coined and supported by academic literature. 
+Due to data acquisition limitations, we had to pivot our research question. We are now comparing how the two data sources, Nexis Uni and Twitter, discuss the term “climate gentrification”. We were also not able to move forward with our spatial and temporal analysis. Instead, we ran sentiment, word relationship, and topic modeling analysis on both datasets and compared them. 
+We hope that research on this topic will encourage more engagement between researchers and people that are living through the problems researchers are attempting to help solve. 
 
-- plot frequencies of both to compare social media frequency vs academic/published journal frequency 
+# Data collection plan
 
-- word relationship using geom_node and geom_edge ("scary plots")
-- correlations
-- hashtag word cloud
+Data will be accessed via Twitter (tweets) and Nexis Uni (news publications). Tweets referring to the keywords “climate gentrification” along with the hashtag “#climategentrification” will be queried for the time period of 2019-present. The query will be conducted on Brandwatch’s Consumer Research, which will be accessed through the UCSB Collaboratory license. The project team has completed a consultation with UCSB Collaboratory to ensure necessary access. Our query resulted in approximately 10,276 tweets.
+The entire Nexis Uni database was queried for “climate gentrification”, which resulted in 498 unique news articles, law reviews and journals, legal news, legal briefs, statutes and legislation, and directories from 2014-present. The Nexis Uni database access is available through the UCSB library as well. 
+
+# Analysis plan 
+
+Our analysis focused on the sentiment, word relationships, and topics of discussion surrounding climate gentrification. This first required cleaning the Twitter and Nexis data by removing domain-specific stop words, stemming key terms, and removing unnecessary terms, phrases, URLs, etc. Next, the team conducted sentiment analysis on the data to identify key emotions surrounding the topic. Then, we used word relationship analysis to dive deeper into the words that were common in the key emotions. Lastly, we used topic modeling to elucidate the primary themes of the discussion. 
+
 
 # Setup Data
 
-### Setup stop words and Bing/NRC sentiments
+## Setup stop words and Bing/NRC sentiments
 ```{r}
 #read in stop words data
 data(stop_words)
@@ -749,7 +754,7 @@ head(cg_t_undesirable_tstat_key_inside, 25)
 cg_t_income_cg <- c("income", "climate gentrification")
 cg_t_income_toks_inside <- tokens_keep(cg_t_tokens, pattern = income_cg, window = 20)
 cg_t_income_toks_inside <- tokens_remove(cg_t_income_toks_inside, pattern = income_cg) # remove the keywords
-icg_t_ncome_toks_outside <- tokens_remove(cg_t_tokens, pattern = income_cg, window = 20)
+cg_t_income_toks_outside <- tokens_remove(cg_t_tokens, pattern = income_cg, window = 20)
 ```
 
 ```{r}
@@ -1121,7 +1126,10 @@ Given the nature of Twitter data in the context of topic modeling, our analysis 
 - The final topic addresses action being taken to create impactful change. The top 5 words are encouraging public participation in the issue and relate to the advocacy surrounding climate gentrification.
 
 
-# Results
+# Avenues for Further Research
 
-# Next Steps
+Understanding how these emotions and subjects surrounding climate gentrification vary spatially and temporally is crucial to this study, as climate gentrification captures the growing awareness of the problem in low-income communities. Twitter data contains the location of the Twitter profile of the message while Nexis data contains a geographic classification of each news article. Analyzing text from both Twitter and Nexis Uni will allow the team to compare sentiment between different data sources. 
+
+Many studies have conducted sentiment analysis and topic modeling on climate change issues using geo-tagged Tweets and other data sources. For instance, the Dahal et al. 2019 paper successfully used Twitter data to evaluate public opinion on climate change over space and time. The study used Latent Dirichlet Allocation for topic modeling and Valence Aware Dictionary and Sentiment Reasoner for sentiment analysis. However, no thorough research has been completed specifically focusing on spreading awareness of climate gentrification.
+
 
