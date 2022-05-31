@@ -64,7 +64,7 @@ Our analysis focused on the sentiment, word relationships, and topics of discuss
 data(stop_words)
 ```
 
-```{r message=FALSE}
+```{r message=FALSE, warning=FALSE}
 ## Read in Nexis Uni Data
 
 # read in nexis uni data 
@@ -77,13 +77,6 @@ cg_nex_data <- lnt_read(my_files) # object of class 'LNT output'
 cg_nex_meta_df <- cg_nex_data@meta
 cg_nex_articles_df <- cg_nex_data@articles
 cg_nex_paragraphs_df <- cg_nex_data@paragraphs
-```
-
-### Setup stop words and Bing/NRC sentiments
-
-```{r}
-#read in stop words data
-data(stop_words)
 ```
 
 ### Cleaning Nexis Uni Data
