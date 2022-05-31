@@ -1,10 +1,12 @@
 ---
-title: "EDS 231 Final Project: Climate Gentrification Text & Sentiment Analysis"
+title: 'EDS 231 Final Project: Climate Gentrification Text & Sentiment Analysis'
 author: "Alex Clippinger, Halina Do-Linh, Desik Somasundaram, Alex Vand"
 date: '2022-05-25'
-output: html_document
-editor_options: 
-  markdown: 
+output:
+  pdf_document: default
+  html_document: default
+editor_options:
+  markdown:
     wrap: sentence
 ---
 
@@ -56,25 +58,19 @@ Instead, we ran sentiment, word relationship, and topic modeling analysis on bot
 
 We hope that research on this topic will encourage more engagement between researchers and people that are living through the problems researchers are attempting to help solve.
 
-Many studies have conducted sentiment analysis and topic modeling on climate change issues using geo-tagged Tweets and other data sources.
-For instance, the Dahal et al. 2019 paper successfully used Twitter data to evaluate public opinion on climate change over space and time.
-The study used Latent Dirichlet Allocation for topic modeling and Valence Aware Dictionary and Sentiment Reasoner for sentiment analysis.
-However, no thorough research has been completed specifically focusing on spreading awareness of climate gentrification.
+Many studies have conducted sentiment analysis and topic modeling on climate change issues using geo-tagged Tweets and other data sources. For instance, the Dahal et al. 2019 paper successfully used Twitter data to evaluate public opinion on climate change over space and time. The study used Latent Dirichlet Allocation for topic modeling and Valence Aware Dictionary and Sentiment Reasoner for sentiment analysis. However, no thorough research has been completed specifically focusing on spreading awareness of climate gentrification.
 
 # Data collection plan
 
 Data will be accessed via Twitter (tweets) and Nexis Uni (news publications).
-Tweets referring to the keywords "climate gentrification" along with the hashtag "\#climategentrification" will be queried for the time period of 2019-present.
-The query will be conducted on Brandwatch's Consumer Research, which will be accessed through the UCSB Collaboratory license.
-The project team has completed a consultation with UCSB Collaboratory to ensure necessary access.
-Our query resulted in approximately 10,276 tweets.
-The entire Nexis Uni database was queried for "climate gentrification", which resulted in 498 unique news articles, law reviews and journals, legal news, legal briefs, statutes and legislation, and directories from 2014-present.
-The Nexis Uni database access is available through the UCSB library as well.
+Tweets referring to the keywords "climate gentrification" along with the hashtag "\#climategentrification" will be queried for the time period of 2019-present. The query will be conducted on Brandwatch's Consumer Research, which will be accessed through the UCSB Collaboratory license. The project team has completed a consultation with UCSB Collaboratory to ensure necessary access.
+Our query resulted in approximately 10,276 tweets. The entire Nexis Uni database was queried for "climate gentrification", which resulted in 498 unique news articles, law reviews and journals, legal news, legal briefs, statutes and legislation, and directories from 2014-present. The Nexis Uni database access is available through the UCSB library as well.
 
 # Analysis plan
 
 Our analysis focused on the sentiment, word relationships, and topics of discussion surrounding climate gentrification.
 This first required cleaning the Twitter and Nexis data by removing domain-specific stop words, stemming key terms, and removing unnecessary terms, phrases, URLs, etc.
+
 Next, the team conducted sentiment analysis on the data to identify key emotions surrounding the topic.
 Then, we used word relationship analysis to dive deeper into the words that were common in the key emotions.
 Lastly, we used topic modeling to elucidate the primary themes of the discussion.
@@ -85,7 +81,7 @@ The following sections provide detailed code and results from the team's analysi
 
 ## a) Nexis Uni Data Preparation
 
-```{r}
+```{r message=FALSE}
 # read in nexis uni data 
 my_files <- list.files(pattern = ".docx", path = here("data"),
                       full.names = TRUE, recursive = TRUE, ignore.case = TRUE)
@@ -107,7 +103,7 @@ data(stop_words)
 
 ### Cleaning Nexis Uni Data
 
-```{r nexis_data cloud seeding cleaning, message=FALSE}
+```{r nexis_data cloud seeding cleaning, message=FALSE, warning=FALSE}
 cg_nex_dat2<- data_frame(element_id = seq(1:length(cg_nex_meta_df$Headline)),
                      Date = cg_nex_meta_df$Date,
                      Headline = cg_nex_meta_df$Headline)
@@ -174,7 +170,7 @@ cg_nex_top_words_by_date[order(cg_nex_top_words_by_date$n, decreasing = TRUE),]
 
 #### Positive-Negative Wordcloud of Nexis Uni
 
-```{r}
+```{r message=FALSE}
 cg_nex_text_words %>%
   inner_join(get_sentiments("bing")) %>%
   count(word, sentiment, sort = TRUE) %>%
@@ -185,7 +181,7 @@ cg_nex_text_words %>%
 
 ## b) Twitter Data Preparation
 
-```{r}
+```{r message=FALSE}
 raw_tweets <- readxl::read_excel(here("data","twitter_data_agg.xlsx"),sheet = 1, col_names = TRUE, col_types = 'text', na = "",skip=6)
 
 dat <- raw_tweets[,c(4,6)] # Extract Date and Title fields
@@ -197,7 +193,7 @@ tweets <- tibble(text = dat$Title,
 
 ### Cleaning Twitter Data
 
-```{r create_corpus}
+```{r create_corpus, warning=FALSE}
 cg_t_corpus <- corpus(dat$Title) # enter quanteda
 #summary(corpus)
 
@@ -247,7 +243,7 @@ daily_tweets_plot <- ggplot(daily_tweets, aes(x = date, y = n)) +
        x = "Date",
        title = "Tweets on Climate Gentrification; 2019-2022")
 
-ggsave("plots/daily_tweets.png", daily_tweets_plot)
+#ggsave("plots/daily_tweets.png", daily_tweets_plot)
 daily_tweets_plot
 ```
 
@@ -338,7 +334,7 @@ tstat_freq
 
 ### Get Bing and NRC sentiments
 
-```{r}
+```{r message=FALSE}
 bing_sent <- get_sentiments('bing') # grab the bing sentiment lexicon from tidytext
 # head(bing_sent, n = 20)
 nrc_sent <- get_sentiments('nrc') %>% 
@@ -349,7 +345,7 @@ nrc_sent <- get_sentiments('nrc') %>%
 
 #### Add Bing sentiments
 
-```{r}
+```{r message=FALSE}
 cg_nex_sent_words <- cg_nex_text_words %>% # break text into individual words
   anti_join(stop_words, by = 'word') %>% # returns only the rows without stop words
   inner_join(bing_sent, by = 'word') # joins and retains only sentiment words
@@ -357,7 +353,7 @@ cg_nex_sent_words <- cg_nex_text_words %>% # break text into individual words
 
 #### Add NRC sentiment word count
 
-```{r}
+```{r message=FALSE}
 cg_nex_word_counts <- cg_nex_text_words %>%
   inner_join(nrc_sent) %>%
   count(word, sentiment, sort = TRUE) %>%
@@ -368,7 +364,7 @@ cg_nex_word_counts <- cg_nex_text_words %>%
 
 The following figure displays trends in Nexis Uni data sentiment over time
 
-```{r}
+```{r message=FALSE}
 cg_nex_sent_counts <- cg_nex_text_words %>%
         inner_join(nrc_sent) %>%
         group_by(date) %>%
@@ -391,7 +387,7 @@ cg_nex_sent_timeplot<-cg_nex_sent_counts %>%
 
 #### Add NRC sentiment word count
 
-```{r}
+```{r message=FALSE}
 cg_t_word_counts <- words %>%
   inner_join(nrc_sent) %>%
   count(word, sentiment, sort = TRUE) %>%
@@ -402,7 +398,7 @@ cg_t_word_counts <- words %>%
 
 The following figure displays trends in Twitter sentiment over time
 
-```{r, fig.cap= "Twitter Trendlines of Overall Sentiment 2018-2022"}
+```{r, message=FALSE, fig.cap= "Twitter Trendlines of Overall Sentiment 2018-2022"}
 cg_t_sent_counts <- words %>%
         inner_join(nrc_sent) %>%
         group_by(date) %>%
@@ -420,7 +416,7 @@ cg_t_sent_timeplot<-cg_t_sent_counts %>%
   theme(legend.position = "bottom")
 ```
 
-```{r}
+```{r message=FALSE}
 (cg_nex_sent_timeplot+cg_t_sent_timeplot) + plot_layout(guides = "collect") & theme(legend.position = 'bottom')
 ```
 
@@ -429,7 +425,7 @@ Both figures indicate that trust, anticipation and fear are the top 3 emotions i
 Another interesting observation was the percentage contribution of anger and sadness is higher in Twitter data when compared to the Nexis Uni data.
 This aligns with our expectations as the emotions are similar yet more muted in the Nexis Uni data.
 
-```{r sentiment_calculations_t}
+```{r sentiment_calculations_t, message=FALSE}
 #tokenize tweets to individual words
 words_forsent <- tweets %>%
   select(id, date, text) %>%
@@ -466,7 +462,7 @@ cg_sentplot_t <- ggplot(output, aes(x=Sentiment,y=Count))+
   ggtitle("TWITTER")
 ```
 
-```{r sentiment_calculations_nex}
+```{r sentiment_calculations_nex, message=FALSE}
 #tokenize tweets to individual words
 words_forsent_nex <-cg_nex_dat3  %>% 
   unnest_tokens(output = word, input = text, token = 'words') %>%
@@ -506,7 +502,7 @@ cg_sentplot_nex <-ggplot(nexoutput, aes(x=Sentiment,y=Count))+
   ggtitle("NEXIS UNI")
 ```
 
-```{r}
+```{r message=FALSE}
 (cg_sentplot_nex+cg_sentplot_t) + plot_layout(guides = "collect") & theme(legend.position = 'bottom')
 ```
 
@@ -514,7 +510,7 @@ Fig XX shows the overall sentiment score classification by publication for Nexis
 With the Nexis Uni publications being longer in length, we suspect there are less neutral classification given that neutral is discrete score of 0.
 Otherwise, the positive and negative sentiment distributions are similar when comparing the two data sources.
 
-```{r}
+```{r message=FALSE}
 cg_nex_word_nplot <- cg_nex_word_counts %>%
   group_by(sentiment) %>%
   slice_max(n, n = 10) %>% 
@@ -527,7 +523,7 @@ cg_nex_word_nplot <- cg_nex_word_counts %>%
        y = NULL)
 ```
 
-```{r}
+```{r message=FALSE}
 cg_t_word_nplot <-cg_t_word_counts %>%
   group_by(sentiment) %>%
   slice_max(n, n = 10) %>% 
@@ -540,7 +536,7 @@ cg_t_word_nplot <-cg_t_word_counts %>%
        y = NULL)
 ```
 
-```{r, fig.height=10, fig.width=10}
+```{r, message=FALSE, fig.height=10, fig.width=10}
 cg_nex_word_nplot/cg_t_word_nplot
 ```
 
@@ -580,7 +576,7 @@ par_tokens <- par_tokens %>%
 par_words <- unnest_tokens(par_tokens, output = word, input = paragraphs, token = "words")
 ```
 
-```{r co-occur_paragraphs}
+```{r co-occur_paragraphs1, eval=FALSE}
 # find words that occur close together in the nexis uni docs
 word_pairs <- par_words %>% 
   pairwise_count(word, par_id, sort = TRUE, upper = FALSE) %>%
@@ -588,7 +584,7 @@ word_pairs <- par_words %>%
   anti_join(add_stops, by = c("item2" = "word"))
 ```
 
-```{r co-occur_plots}
+```{r co-occur_plots1, eval=FALSE}
 # plot correlations
 word_pairs %>%
   filter(n >= 200) %>%
@@ -600,8 +596,9 @@ word_pairs %>%
                  point.padding = unit(0.2, "lines")) +
   theme_void()
 ```
+![Word Pairs Plot](plots/word_pairs_nex_plot.png)
 
-```{r corr_paragraphs}
+```{r corr_paragraphs1, eval=FALSE}
 # plot correlations by paragraph
 if (!file.exists(word_cors.Rda)){
   
@@ -621,7 +618,7 @@ load("analysisdata/word_cors.Rda")
 
 #### Results
 
-```{r corr_paragraphs2}
+```{r corr_paragraphs2, eval=FALSE}
 word_cors %>%
   filter(item1 %in% c("income")) %>%
   group_by(item1) %>%
@@ -640,8 +637,9 @@ word_cors %>%
     subtitle = "Climate gentrification NEXIS UNI"
   )
 ```
+![Correlation with Key Words](plots/key_word_corr_nex_plot.png)
 
-```{r corr_network}
+```{r corr_undesirable1, eval=FALSE}
 # let's zoom in on just one of our key terms
 undesirable_cors <- word_cors %>%
   filter(item1 == "undesirable") %>%
@@ -659,7 +657,7 @@ undesirable_cors  %>%
   theme_void()
 ```
 
-```{r corr_network}
+```{r corr_network1, eval=FALSE}
 # let's zoom in on just one of our key terms
 income_cors <- word_cors %>%
   filter(item1 == "income") %>%
@@ -676,6 +674,7 @@ income_cors  %>%
                  point.padding = unit(0.2, "lines")) +
   theme_void()
 ```
+![Income Correlation Plot](plots/income_corr_nex_plot.png)
 
 #### "undesirable" and climate gentrification as multi-word term of interest in Nexis Uni
 
@@ -715,7 +714,7 @@ head(income_tstat_key_inside, 10)
 
 ### Twitter Word Relationships/Correlations
 
-```{r tidy}
+```{r tidy2}
 # create objects to do finds correlations 
 # convert to tidy format and apply my stop words
 cg_t_raw_text <- tidy(cg_t_corpus)
@@ -736,7 +735,7 @@ cg_t_par_tokens <- par_tokens %>%
 cg_t_par_words <- unnest_tokens(cg_t_par_tokens, output = word, input = paragraphs, token = "words")
 ```
 
-```{r co-occur_paragraphs}
+```{r co-occur_paragraphs2, eval=FALSE}
 # find words that occur close together in the tweets
 cg_t_word_pairs <- cg_t_par_words %>% 
   pairwise_count(word, par_id, sort = TRUE, upper = FALSE) %>%
@@ -746,7 +745,7 @@ cg_t_word_pairs <- cg_t_par_words %>%
 
 #### Results
 
-```{r co-occur_plots}
+```{r co-occur_plots2, eval=FALSE}
 # plot correlations
 cg_t_word_pairs %>%
   filter(n >= 200) %>%
@@ -758,8 +757,9 @@ cg_t_word_pairs %>%
                  point.padding = unit(0.2, "lines")) +
   theme_void()
 ```
+![Twitter Word Pairs](plots/word_pairs_t_plot.png)
 
-```{r corr_paragraphs}
+```{r corr_paragraphs3, eval=FALSE}
 # plot correlations by paragraph
 cg_t_word_cors <- cg_t_par_words %>%
   anti_join(add_stops, by = c("word" = "word")) %>%
@@ -769,7 +769,7 @@ cg_t_word_cors <- cg_t_par_words %>%
   pairwise_cor(word, par_id, sort = TRUE)  
 ```
 
-```{r corr_paragraphs2}
+```{r corr_paragraphs4, eval=FALSE}
 cg_t_word_cors %>%
   filter(item1 %in% c("undesirable", "income")) %>%
   group_by(item1) %>%
@@ -791,7 +791,7 @@ cg_t_word_cors %>%
 
 ```
 
-```{r corr_network}
+```{r corr_undesirable2, eval=FALSE}
 # let's zoom in on just one of our key terms
 cg_t_undesirable_cors <- cg_t_word_cors %>%
   filter(item1 == "undesirable") %>%
@@ -809,7 +809,7 @@ cg_t_undesirable_cors  %>%
   theme_void()
 ```
 
-```{r corr_network}
+```{r corr_network2, eval=FALSE}
 # let's zoom in on just one of our key terms
 cg_t_income_cors <- cg_t_word_cors %>%
   filter(item1 == "income") %>%
@@ -865,7 +865,7 @@ head(cg_t_income_tstat_key_inside, 25)
 
 #### N-gram comparison between Nexis Uni and Twitter data
 
-```{r convert_dfm}
+```{r convert_dfm1}
 toks2 <- tokens_ngrams(toks1, n=3)
 dfm2 <- dfm(toks2)
 dfm2 <- dfm_remove(dfm2, pattern = c(stop_vec))
@@ -875,7 +875,7 @@ freq_words2
 #tokens1 <- tokens_select(tokens1,pattern = stopwords("en"), selection = "remove")
 ```
 
-```{r convert_dfm}
+```{r convert_dfm2}
 cg_t_toks2 <- tokens_ngrams(cg_t_tokens, n=3)
 cg_t_dfm2 <- dfm(cg_t_toks2)
 cg_t_dfm2 <- dfm_remove(cg_t_dfm2, pattern = c(stop_vec))
@@ -1015,7 +1015,7 @@ cg_t_add_stops <- c(stopwords("en"), "rt", "n", "climate", "gentrification")
 cg_t_toks1 <- tokens_select(toks, pattern = cg_t_add_stops, selection = "remove")
 ```
 
-```{r dfm}
+```{r dfm2}
 cg_t_dfm_comm<- dfm(cg_t_toks1, tolower = TRUE)
 cg_t_dfm <- dfm_wordstem(cg_t_dfm_comm)
 
@@ -1055,7 +1055,7 @@ beta <- cg_t_tmResult$terms
 vocab <- (colnames(beta))
 ```
 
-```{r top_terms_topic, eval=FALSE}
+```{r top_terms_topic2, eval=FALSE}
 cg_t_comment_topics <- tidy(cg_t_topicModel_k3, matrix = "beta")
 
 cg_t_top_terms <- cg_t_comment_topics %>%
@@ -1067,7 +1067,7 @@ cg_t_top_terms <- cg_t_comment_topics %>%
 cg_t_top_terms
 ```
 
-```{r plot_top_terms, eval=FALSE}
+```{r plot_top_terms2, eval=FALSE}
 cg_t_terms_plot <- cg_t_top_terms %>%
   mutate(term = reorder(term, beta)) %>%
   ggplot(aes(term, beta, fill = factor(topic))) +
@@ -1081,12 +1081,12 @@ terms_plot
 
 ![Twitter Topic Modeling Intertopic Distance Map for k=3](plots/topics_twitter.png)
 
-```{r topic_names, eval=FALSE}
+```{r topic_names2, eval=FALSE}
 cg_t_top5termsPerTopic <- terms(cg_t_topicModel_k3, 5)
 cg_t_topicNames <- apply(cg_t_top5termsPerTopic, 2, paste, collapse=" ")
 ```
 
-```{r topic_dists, eval=FALSE}
+```{r topic_dists2, eval=FALSE}
 exampleIds <- c(1, 2, 3, 4, 5, 6)
 N <- length(exampleIds)
 
@@ -1135,18 +1135,6 @@ Twitter data can contain the location of the Twitter profile associated with eac
 
 # 4. Citations
 
--   Dahal, B., Kumar, S.A.P. & Li, Z. Topic modeling and sentiment analysis of global climate change tweets.
-    Soc.
-    Netw.
-    Anal.
-    Min. 9, 24 (2019).
-    <https://doi.org/10.1007/s13278-019-0568-8>
+Dahal, B., Kumar, S.A.P. & Li, Z. Topic modeling and sentiment analysis of global climate change tweets. Soc. Netw. Anal. Min. 9, 24 (2019). <https://doi.org/10.1007/s13278-019-0568-8>
 
--   Keenan, Jesse & Hill, Thomas & Gumber, Anurag.
-    (2018).
-    Climate gentrification: From theory to empiricism in Miami-Dade County, Florida.
-    Environmental Research Letters.
-
-    13. 
-
-    14. 10.1088/1748-9326/aabb32.
+Keenan, Jesse & Hill, Thomas & Gumber, Anurag. (2018). Climate gentrification: From theory to empiricism in Miami-Dade County, Florida. Environmental Research Letters. 13. 14. 10.1088/1748-9326/aabb32.
