@@ -1124,9 +1124,6 @@ Given the nature of Twitter data in the context of topic modeling, our analysis 
 - The final topic addresses action being taken to create impactful change. The top 5 words are encouraging public participation in the issue and relate to the advocacy surrounding climate gentrification.
 
 
-
-
-
 # Results
 
 # Next Steps
