@@ -147,6 +147,7 @@ cg_nex_top_words_by_date[order(cg_nex_top_words_by_date$n, decreasing = TRUE),]
 
 #### Positive-Negative Wordcloud of Nexis Uni
 
+
 ```{r message=FALSE}
 cg_nex_text_words %>%
   inner_join(get_sentiments("bing")) %>%
@@ -207,6 +208,7 @@ words <- tweets %>%
 ### Initial exploration of twitter data
 
 #### Time-Series
+
 
 ```{r tweet_data}
 # Simple plot of tweets per day
@@ -341,7 +343,7 @@ cg_nex_word_counts <- cg_nex_text_words %>%
 
 #### Results
 
-The following figure displays trends in Nexis Uni data sentiment over time
+The results of the Nexis Uni data sentiment over time are compared with the Twitter data in the section below.
 
 ```{r message=FALSE}
 cg_nex_sent_counts <- cg_nex_text_words %>%
@@ -352,7 +354,7 @@ cg_nex_sent_counts <- cg_nex_text_words %>%
         mutate(pct_contribution = ((n/sentwords_per_day)*100)) %>% 
         filter(date >= "2018-01-01")
 
-cg_nex_sent_timeplot<-cg_nex_sent_counts %>%
+cg_nex_sent_timeplot <- cg_nex_sent_counts %>%
   group_by(date) %>%
   ggplot(aes(date, pct_contribution, group=sentiment, color=sentiment))  +
   geom_smooth(span = 0.7)  +
@@ -391,12 +393,16 @@ cg_t_sent_timeplot<-cg_t_sent_counts %>%
   theme(legend.position = "bottom")
 ```
 
+#### Results
+
 ```{r message=FALSE}
 (cg_nex_sent_timeplot+cg_t_sent_timeplot) + plot_layout(guides = "collect") & theme(legend.position = 'bottom')
 ```
 
-Figure X1 shows the percent contribution to overall sentiment from the Nexis Uni data subset to 2018-2022 to better align with the Twitter data and the percent contribution to overall sentiment from the Twitter data.
+This figure shows the percent contribution to overall sentiment from the Nexis Uni data subset to 2018-2022 to better align with the Twitter data and the percent contribution to overall sentiment from the Twitter data.
+
 Both figures indicate that trust, anticipation and fear are the top 3 emotions in both the published sentiment from Nexis Uni data and people's sentiment from the Twitter data.
+
 Another interesting observation was the percentage contribution of anger and sadness is higher in Twitter data when compared to the Nexis Uni data.
 This aligns with our expectations as the emotions are similar yet more muted in the Nexis Uni data.
 
@@ -481,7 +487,7 @@ cg_sentplot_nex <-ggplot(nexoutput, aes(x=Sentiment,y=Count))+
 (cg_sentplot_nex+cg_sentplot_t) + plot_layout(guides = "collect") & theme(legend.position = 'bottom')
 ```
 
-Fig XX shows the overall sentiment score classification by publication for Nexis Uni and by tweet for the Twitter data.
+The figure above shows the overall sentiment score classification by publication for Nexis Uni and by tweet for the Twitter data.
 With the Nexis Uni publications being longer in length, we suspect there are less neutral classification given that neutral is discrete score of 0.
 Otherwise, the positive and negative sentiment distributions are similar when comparing the two data sources.
 
@@ -515,11 +521,12 @@ cg_t_word_nplot <-cg_t_word_counts %>%
 cg_nex_word_nplot/cg_t_word_nplot
 ```
 
-Fig XX show the top 10 words for emotion by data source. The only top word that is common from both datasets is for the fear emotion, where the top word is "change". In joy and sadness, we see the word "income" is in the top three. Otherwise, we see very little similarities between the two datasets. This leads to think that the two sources may not be talking about the same topics within these emotions or they might be using different words to talk about the same topics. We will explore this further using topic modeling analysis. 
+The figure above shows the top 10 words for emotion by data source. The only top word that is common from both datasets is for the fear emotion, where the top word is "change". In joy and sadness, we see the word "income" is in the top three. Otherwise, we see very little similarities between the two datasets. This leads to think that the two sources may not be talking about the same topics within these emotions or they might be using different words to talk about the same topics. We will explore this further using topic modeling analysis. 
 
 We also noticed that words such as "undesirable"  and "income" are common in many of the emotions from the Twitter data. "Income" also comes up in multiple emotions in the Nexis Uni data. To further analyze this, we are going to use word relationship analysis to gain more context regarding the use of "undesirable" and "income". 
 
 ### Word relationships / Correlations of words in Nexis Uni
+
 ```{r tidy}
 # create objects to do finds correlations 
 # convert to tidy format and apply my stop words
@@ -548,6 +555,8 @@ word_pairs <- par_words %>%
   anti_join(add_stops, by = c("item1" = "word")) %>%
   anti_join(add_stops, by = c("item2" = "word"))
 ```
+
+#### Results
 
 ```{r co-occur_plots1, eval=FALSE}
 # plot correlations
@@ -598,6 +607,8 @@ key_word_corr_nex <- word_cors %>%
   )
 ```
 ![Correlation with Key Words](plots/key_word_corr_nex_plot.png)
+
+The plot above shows the words most highly correlated with "income". This shows that income is often discussed in the context of low income households. This association is further visualized in the correlation plot below.
 
 ```{r corr_undesirable1, eval=FALSE}
 # let's zoom in on just one of our key terms
@@ -680,6 +691,8 @@ cg_t_word_pairs <- cg_t_par_words %>%
   anti_join(add_stops, by = c("item2" = "word"))
 ```
 
+#### Results
+
 ```{r co-occur_plots2, eval=FALSE}
 # plot correlations
 word_pairs_t_plot <- cg_t_word_pairs %>%
@@ -734,6 +747,8 @@ ggsave("key_word_corr_t_plot.png",
 ```
 ![Keywords](plots/key_word_corr_t_plot.png)
 
+The correlation plot above displays similar results for Twitter data as for Nexis Uni articles. The discussion of "income" is still related to low income households and communities.
+
 ```{r corr_undesirable2, eval=FALSE}
 # let's zoom in on just one of our key terms
 cg_t_undesirable_cors <- cg_t_word_cors %>%
@@ -756,6 +771,8 @@ ggsave("undesirable_corr_t_plot.png",
        path = "plots")
 ```
 ![Twitter Undesirable Plot](plots/undesirable_corr_t_plot.png)
+
+The resulting correlation visualization for "undesireable" presents connections to buckets and wading. This may suggest that in the context of climate gentrification, more specifically due to rising sea levels and flood risk, "undesirable" is being used to describe locations at greater risk of flooding.
 
 ```{r corr_network2, eval=FALSE}
 # let's zoom in on just one of our key terms
