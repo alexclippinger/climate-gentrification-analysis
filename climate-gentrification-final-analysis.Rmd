@@ -43,7 +43,10 @@ Language allows us to articulate our thoughts and emotions. In our Ethics and Bi
 
 Our initial research question was to understand the emergence of the term “climate gentrification” both spatially and temporally. The idea was this analysis would give insights into how language spreads and evolves, highlighting the emotions of those who have been historically left out of the conversation around climate action. Valencia Gunder mentioned how city officials and stakeholders often neglected the concerns of the people in the city of Miami before the term “climate gentrification” was coined and supported by academic literature. 
 Due to data acquisition limitations, we had to pivot our research question. We are now comparing how the two data sources, Nexis Uni and Twitter, discuss the term “climate gentrification”. We were also not able to move forward with our spatial and temporal analysis. Instead, we ran sentiment, word relationship, and topic modeling analysis on both datasets and compared them. 
+
 We hope that research on this topic will encourage more engagement between researchers and people that are living through the problems researchers are attempting to help solve. 
+
+Many studies have conducted sentiment analysis and topic modeling on climate change issues using geo-tagged Tweets and other data sources. For instance, the Dahal et al. 2019 paper successfully used Twitter data to evaluate public opinion on climate change over space and time. The study used Latent Dirichlet Allocation for topic modeling and Valence Aware Dictionary and Sentiment Reasoner for sentiment analysis. However, no thorough research has been completed specifically focusing on spreading awareness of climate gentrification.
 
 # Data collection plan
 
@@ -1007,7 +1010,7 @@ daily_tweets_plot <- ggplot(daily_tweets, aes(x = date, y = n)) +
   theme_light() +
   labs(y = "Number of Tweets",
        x = "Date",
-       title = "Tweets on Climate Gentrification; 2020-2022")
+       title = "Tweets on Climate Gentrification; 2019-2022")
 
 ggsave("plots/daily_tweets.png", daily_tweets_plot)
 daily_tweets_plot
@@ -1138,8 +1141,11 @@ Given the nature of Twitter data in the context of topic modeling, our analysis 
 
 # Avenues for Further Research
 
-Understanding how these emotions and subjects surrounding climate gentrification vary spatially and temporally is crucial to this study, as climate gentrification captures the growing awareness of the problem in low-income communities. Twitter data contains the location of the Twitter profile of the message while Nexis data contains a geographic classification of each news article. Analyzing text from both Twitter and Nexis Uni will allow the team to compare sentiment between different data sources. 
+Understanding how these emotions and subjects surrounding climate gentrification vary spatially and temporally is crucial to this study, as climate gentrification captures the growing awareness of the problem in low-income communities. Twitter data can contain the location of the Twitter profile associated with each message while Nexis data contains a geographic classification of each news article. 
 
-Many studies have conducted sentiment analysis and topic modeling on climate change issues using geo-tagged Tweets and other data sources. For instance, the Dahal et al. 2019 paper successfully used Twitter data to evaluate public opinion on climate change over space and time. The study used Latent Dirichlet Allocation for topic modeling and Valence Aware Dictionary and Sentiment Reasoner for sentiment analysis. However, no thorough research has been completed specifically focusing on spreading awareness of climate gentrification.
+# Citations
 
+- Dahal, B., Kumar, S.A.P. & Li, Z. Topic modeling and sentiment analysis of global climate change tweets. Soc. Netw. Anal. Min. 9, 24 (2019). https://doi.org/10.1007/s13278-019-0568-8
+
+- Keenan, Jesse & Hill, Thomas & Gumber, Anurag. (2018). Climate gentrification: From theory to empiricism in Miami-Dade County, Florida. Environmental Research Letters. 13. 054001. 10.1088/1748-9326/aabb32.
 
